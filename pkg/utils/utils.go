@@ -3,7 +3,10 @@ package utils
 
 import (
 	"cmp"
+	"os"
+	"path/filepath"
 	"slices"
+	"strings"
 )
 
 // Min returns the minimum of two ordered values.
@@ -64,4 +67,30 @@ func Unique[T comparable](slice []T) []T {
 		}
 	}
 	return result
+}
+
+// TildePath replaces the home directory portion of a path with ~.
+// If the path doesn't start with the home directory, it returns the original path.
+func TildePath(path string) string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return path
+	}
+
+	// Ensure we have clean paths for comparison
+	cleanPath := filepath.Clean(path)
+	cleanHome := filepath.Clean(home)
+
+	// Check if the path starts with the home directory
+	if strings.HasPrefix(cleanPath, cleanHome) {
+		// Check if it's exactly the home directory or has a path separator after it
+		if len(cleanPath) == len(cleanHome) {
+			return "~"
+		}
+		if len(cleanPath) > len(cleanHome) && cleanPath[len(cleanHome)] == filepath.Separator {
+			return "~" + cleanPath[len(cleanHome):]
+		}
+	}
+
+	return path
 }

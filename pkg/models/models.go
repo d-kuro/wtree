@@ -58,6 +58,7 @@ type NamingConfig struct {
 
 // UIConfig contains UI-related configuration options.
 type UIConfig struct {
-	Color bool `mapstructure:"color"` // Enable colored output
-	Icons bool `mapstructure:"icons"` // Enable icon display
+	Color     bool `mapstructure:"color"`      // Enable colored output
+	Icons     bool `mapstructure:"icons"`      // Enable icon display
+	TildeHome bool `mapstructure:"tilde_home"` // Display home directory as ~
 }

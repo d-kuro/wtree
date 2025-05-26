@@ -107,7 +107,7 @@ func runRemove(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("no worktree found matching pattern: %s", args[0])
 		}
 	} else {
-		f := finder.New(g, &cfg.Finder)
+		f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
 		selected, err := f.SelectMultipleWorktrees(nonMainWorktrees)
 		if err != nil {
 			return fmt.Errorf("worktree selection cancelled")
@@ -201,7 +201,7 @@ func removeGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []string
 			g = &git.Git{}
 		}
 		
-		f := finder.New(g, &cfg.Finder)
+		f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
 		selected, err := f.SelectMultipleWorktrees(worktrees)
 		if err != nil {
 			return fmt.Errorf("worktree selection cancelled")

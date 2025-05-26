@@ -13,8 +13,9 @@ import (
 
 // Finder provides fuzzy finder functionality.
 type Finder struct {
-	git    *git.Git
-	config *models.FinderConfig
+	git        *git.Git
+	config     *models.FinderConfig
+	useTildeHome bool
 }
 
 // New creates a new Finder instance.
@@ -22,6 +23,15 @@ func New(g *git.Git, config *models.FinderConfig) *Finder {
 	return &Finder{
 		git:    g,
 		config: config,
+	}
+}
+
+// NewWithUI creates a new Finder instance with UI configuration.
+func NewWithUI(g *git.Git, config *models.FinderConfig, uiConfig *models.UIConfig) *Finder {
+	return &Finder{
+		git:          g,
+		config:       config,
+		useTildeHome: uiConfig.TildeHome,
 	}
 }
 
@@ -52,7 +62,11 @@ func (f *Finder) SelectWorktree(worktrees []models.Worktree) (*models.Worktree, 
 			if wt.IsMain {
 				marker = "[main] "
 			}
-			return fmt.Sprintf("%s%s (%s)", marker, wt.Branch, wt.Path)
+			path := wt.Path
+			if f.useTildeHome {
+				path = utils.TildePath(path)
+			}
+			return fmt.Sprintf("%s%s (%s)", marker, wt.Branch, path)
 		},
 		opts...,
 	)
@@ -132,7 +146,11 @@ func (f *Finder) SelectMultipleWorktrees(worktrees []models.Worktree) ([]models.
 			if wt.IsMain {
 				marker = "[main] "
 			}
-			return fmt.Sprintf("%s%s (%s)", marker, wt.Branch, wt.Path)
+			path := wt.Path
+			if f.useTildeHome {
+				path = utils.TildePath(path)
+			}
+			return fmt.Sprintf("%s%s (%s)", marker, wt.Branch, path)
 		},
 		opts...,
 	)
@@ -151,9 +169,13 @@ func (f *Finder) SelectMultipleWorktrees(worktrees []models.Worktree) ([]models.
 
 // generateWorktreePreview generates preview content for a worktree.
 func (f *Finder) generateWorktreePreview(wt models.Worktree, maxLines int) string {
+	path := wt.Path
+	if f.useTildeHome {
+		path = utils.TildePath(path)
+	}
 	preview := []string{
 		fmt.Sprintf("Branch: %s", wt.Branch),
-		fmt.Sprintf("Path: %s", wt.Path),
+		fmt.Sprintf("Path: %s", path),
 		fmt.Sprintf("Commit: %s", truncateHash(wt.CommitHash)),
 		fmt.Sprintf("Created: %s", wt.CreatedAt.Format("2006-01-02 15:04")),
 	}

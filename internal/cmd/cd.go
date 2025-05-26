@@ -11,6 +11,7 @@ import (
 	"github.com/d-kuro/wtree/internal/ui"
 	"github.com/d-kuro/wtree/internal/worktree"
 	"github.com/d-kuro/wtree/pkg/models"
+	"github.com/d-kuro/wtree/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -122,7 +123,7 @@ func runCd(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("no worktrees found")
 		}
 
-		f := finder.New(g, &cfg.Finder)
+		f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
 		selected, err := f.SelectWorktree(worktrees)
 		if err != nil {
 			return fmt.Errorf("worktree selection cancelled")
@@ -134,7 +135,11 @@ func runCd(cmd *cobra.Command, args []string) error {
 	if printPath {
 		fmt.Println(path)
 	} else {
-		printer.PrintSuccess(fmt.Sprintf("Navigate to: %s", path))
+		displayPath := path
+		if cfg.UI.TildeHome {
+			displayPath = utils.TildePath(path)
+		}
+		printer.PrintSuccess(fmt.Sprintf("Navigate to: %s", displayPath))
 	}
 
 	return nil
@@ -186,7 +191,7 @@ func navigateGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []stri
 				g = &git.Git{}
 			}
 			
-			f := finder.New(g, &cfg.Finder)
+			f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
 			selected, err := f.SelectWorktree(worktrees)
 			if err != nil {
 				return fmt.Errorf("worktree selection cancelled")
@@ -203,7 +208,7 @@ func navigateGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []stri
 			g = &git.Git{}
 		}
 		
-		f := finder.New(g, &cfg.Finder)
+		f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
 		selected, err := f.SelectWorktree(worktrees)
 		if err != nil {
 			return fmt.Errorf("worktree selection cancelled")
@@ -214,7 +219,11 @@ func navigateGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []stri
 	if printPath {
 		fmt.Println(path)
 	} else {
-		printer.PrintSuccess(fmt.Sprintf("Navigate to: %s", path))
+		displayPath := path
+		if cfg.UI.TildeHome {
+			displayPath = utils.TildePath(path)
+		}
+		printer.PrintSuccess(fmt.Sprintf("Navigate to: %s", displayPath))
 	}
 
 	return nil

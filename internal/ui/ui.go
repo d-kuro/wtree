@@ -9,19 +9,22 @@ import (
 	"time"
 
 	"github.com/d-kuro/wtree/pkg/models"
+	"github.com/d-kuro/wtree/pkg/utils"
 )
 
 // Printer handles output formatting.
 type Printer struct {
-	useColor bool
-	useIcons bool
+	useColor     bool
+	useIcons     bool
+	useTildeHome bool
 }
 
 // New creates a new Printer instance.
 func New(config *models.UIConfig) *Printer {
 	return &Printer{
-		useColor: config.Color,
-		useIcons: config.Icons,
+		useColor:     config.Color,
+		useIcons:     config.Icons,
+		useTildeHome: config.TildeHome,
 	}
 }
 
@@ -42,9 +45,13 @@ func (p *Printer) PrintWorktrees(worktrees []models.Worktree, verbose bool) {
 			if wt.IsMain {
 				wtType = "main"
 			}
+			path := wt.Path
+			if p.useTildeHome {
+				path = utils.TildePath(path)
+			}
 			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 				wt.Branch,
-				wt.Path,
+				path,
 				p.truncateHash(wt.CommitHash),
 				p.formatTime(wt.CreatedAt),
 				wtType,
@@ -57,7 +64,11 @@ func (p *Printer) PrintWorktrees(worktrees []models.Worktree, verbose bool) {
 			if wt.IsMain && p.useIcons {
 				marker = "● "
 			}
-			_, _ = fmt.Fprintf(w, "%s%s\t%s\n", marker, wt.Branch, wt.Path)
+			path := wt.Path
+			if p.useTildeHome {
+				path = utils.TildePath(path)
+			}
+			_, _ = fmt.Fprintf(w, "%s%s\t%s\n", marker, wt.Branch, path)
 		}
 	}
 }
@@ -124,6 +135,9 @@ func (p *Printer) PrintInfo(message string) {
 
 // PrintWorktreePath prints only the worktree path (for cd command).
 func (p *Printer) PrintWorktreePath(path string) {
+	if p.useTildeHome {
+		path = utils.TildePath(path)
+	}
 	fmt.Println(path)
 }
 

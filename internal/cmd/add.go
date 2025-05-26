@@ -75,7 +75,7 @@ func runAdd(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to list branches: %w", err)
 		}
 
-		f := finder.New(g, &cfg.Finder)
+		f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
 		selectedBranch, err := f.SelectBranch(branches)
 		if err != nil {
 			return fmt.Errorf("branch selection cancelled")

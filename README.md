@@ -73,6 +73,7 @@ wtree remove feature/old-ui
 - **Configuration Management**: Customize worktree directories and naming conventions
 - **Preview Support**: See branch details and recent commits before selection
 - **Clean Operations**: Automatic cleanup of deleted worktree information
+- **Home Directory Display**: Option to display paths with `~` instead of full home directory path
 
 ## Global Worktree Management
 
@@ -120,6 +121,11 @@ Display all worktrees
 ```bash
 # Simple list
 wtree list
+# Output:
+# BRANCH        PATH
+# ● main        ~/ghq/github.com/user/project
+# feature/api   ~/worktrees/github.com/user/project/feature-api
+# bugfix/login  ~/worktrees/github.com/user/project/bugfix-login
 
 # Detailed information
 wtree list -v
@@ -341,6 +347,8 @@ sanitize_chars = { "/" = "-", ":" = "-" }
 color = true
 # Icon display
 icons = true
+# Display home directory as ~ in paths
+tilde_home = true
 ```
 
 ## Advanced Usage
