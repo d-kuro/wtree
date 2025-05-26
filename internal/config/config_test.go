@@ -33,18 +33,13 @@ func TestGetConfigDir(t *testing.T) {
 func TestInit(t *testing.T) {
 	// Create temporary directory for config
 	tmpDir := t.TempDir()
-	configDir := filepath.Join(tmpDir, "wtree")
-
-	// Override viper config path
+	
+	// Set test environment
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmpDir, ".config"))
+	
+	// Reset viper to clean state
 	viper.Reset()
-	viper.SetConfigName(configName)
-	viper.SetConfigType(configType)
-	viper.AddConfigPath(configDir)
-
-	// Create config directory
-	if err := os.MkdirAll(configDir, 0755); err != nil {
-		t.Fatalf("Failed to create config dir: %v", err)
-	}
 
 	// Test initialization
 	if err := Init(); err != nil {
@@ -70,7 +65,7 @@ func TestInit(t *testing.T) {
 	if viper.GetString("finder.keybind_cancel") != "esc" {
 		t.Errorf("Default finder.keybind_cancel should be 'esc'")
 	}
-	if viper.GetString("naming.template") != "{{.Repository}}-{{.Branch}}" {
+	if viper.GetString("naming.template") != "{{.Host}}/{{.Owner}}/{{.Repository}}/{{.Branch}}" {
 		t.Errorf("Default naming.template not set correctly")
 	}
 	if !viper.GetBool("ui.color") {
@@ -79,11 +74,19 @@ func TestInit(t *testing.T) {
 	if !viper.GetBool("ui.icons") {
 		t.Errorf("Default ui.icons should be true")
 	}
+	
+	// Cleanup viper for other tests
+	t.Cleanup(func() {
+		viper.Reset()
+	})
 }
 
 func TestLoad(t *testing.T) {
 	// Setup viper with test values
 	viper.Reset()
+	t.Cleanup(func() {
+		viper.Reset()
+	})
 	viper.Set("worktree.basedir", "~/test-worktrees")
 	viper.Set("worktree.auto_mkdir", false)
 	viper.Set("finder.preview", false)
@@ -131,6 +134,9 @@ func TestPathExpansion(t *testing.T) {
 	// Test home directory expansion
 	t.Run("HomeDirectoryExpansion", func(t *testing.T) {
 		viper.Reset()
+		t.Cleanup(func() {
+			viper.Reset()
+		})
 		viper.Set("worktree.basedir", "~/worktrees")
 
 		cfg, err := Load()
@@ -149,6 +155,9 @@ func TestPathExpansion(t *testing.T) {
 	// Test environment variable expansion
 	t.Run("EnvironmentVariableExpansion", func(t *testing.T) {
 		viper.Reset()
+		t.Cleanup(func() {
+			viper.Reset()
+		})
 		_ = os.Setenv("TEST_WORKTREE_DIR", "/test/path")
 		defer func() { _ = os.Unsetenv("TEST_WORKTREE_DIR") }()
 
@@ -168,6 +177,9 @@ func TestPathExpansion(t *testing.T) {
 
 func TestGettersAndSetters(t *testing.T) {
 	viper.Reset()
+	t.Cleanup(func() {
+		viper.Reset()
+	})
 
 	// Test Set and Get
 	testKey := "test.key"
@@ -212,6 +224,9 @@ func TestGettersAndSetters(t *testing.T) {
 
 func TestAllSettings(t *testing.T) {
 	viper.Reset()
+	t.Cleanup(func() {
+		viper.Reset()
+	})
 	viper.Set("test.key1", "value1")
 	viper.Set("test.key2", 123)
 	viper.Set("test.key3", true)
@@ -238,6 +253,9 @@ func TestAllSettings(t *testing.T) {
 }
 
 func TestConfigStructureIntegrity(t *testing.T) {
+	t.Cleanup(func() {
+		viper.Reset()
+	})
 	// This test ensures that the Config structure can be properly marshaled/unmarshaled
 	cfg := &models.Config{
 		Worktree: models.WorktreeConfig{
