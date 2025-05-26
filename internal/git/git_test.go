@@ -24,8 +24,14 @@ func NewTestRepository(t *testing.T) *TestRepository {
 	tmpDir := t.TempDir()
 	repo := &TestRepository{Path: tmpDir}
 	
-	// Initialize repository
-	if err := repo.run("init"); err != nil {
+	// Set environment variables for git if needed in CI
+	t.Setenv("GIT_AUTHOR_NAME", "Test User")
+	t.Setenv("GIT_AUTHOR_EMAIL", "test@example.com")
+	t.Setenv("GIT_COMMITTER_NAME", "Test User")
+	t.Setenv("GIT_COMMITTER_EMAIL", "test@example.com")
+	
+	// Initialize repository with main as default branch
+	if err := repo.run("init", "-b", "main"); err != nil {
 		t.Fatalf("Failed to init repository: %v", err)
 	}
 	
@@ -77,8 +83,10 @@ func (r *TestRepository) CreateWorktree(t *testing.T, path, branch string) {
 	// First check if branch exists in current worktree, if so switch away
 	currentBranch, _ := r.getCurrentBranch()
 	if currentBranch == branch {
-		if err := r.run("checkout", "-b", "temp-branch"); err != nil {
-			if err := r.run("checkout", "main"); err != nil {
+		// Try to switch to main branch first
+		if err := r.run("checkout", "main"); err != nil {
+			// If main doesn't exist or we're already on it, create a temporary branch
+			if err := r.run("checkout", "-b", "temp-branch-"+branch); err != nil {
 				t.Fatalf("Failed to switch away from branch: %v", err)
 			}
 		}
@@ -116,7 +124,7 @@ func TestNewFromCwd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get current directory: %v", err)
 	}
-	defer func() { _ = os.Chdir(origDir) }()
+	t.Cleanup(func() { _ = os.Chdir(origDir) })
 	
 	if err := os.Chdir(repo.Path); err != nil {
 		t.Fatalf("Failed to change directory: %v", err)
