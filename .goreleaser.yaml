@@ -1,0 +1,22 @@
+builds:
+  - main: ./cmd/wtree/main.go
+    binary: wtree
+    goos:
+      - windows
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+checksum:
+  name_template: checksums.txt
+archives:
+  - format: tar.gz
+snapshot:
+  name_template: master
+changelog:
+  skip: true
+release:
+  github:
+    owner: d-kuro
+    name: wtree
