@@ -4,6 +4,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"runtime/debug"
 
 	"github.com/d-kuro/wtree/internal/config"
 	"github.com/spf13/cobra"
@@ -24,7 +25,7 @@ var rootCmd = &cobra.Command{
 Like how 'ghq' manages repository clones, wtree provides intuitive 
 operations for creating, switching, and deleting worktrees using 
 a fuzzy finder interface.`,
-	Version: fmt.Sprintf("%s (commit: %s, built: %s)", version, commit, date),
+	Version: getVersionString(),
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -46,4 +47,41 @@ func initConfig() {
 		fmt.Fprintf(os.Stderr, "Error initializing config: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+// getVersionString returns a formatted version string using build info
+func getVersionString() string {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return fmt.Sprintf("%s (commit: %s, built: %s)", version, commit, date)
+	}
+	
+	// Extract version information from build info
+	buildVersion := version
+	buildCommit := commit
+	buildDate := date
+	
+	// Try to get version from module
+	if info.Main.Version != "" && info.Main.Version != "(devel)" {
+		buildVersion = info.Main.Version
+	}
+	
+	// Try to get commit and date from VCS settings
+	for _, setting := range info.Settings {
+		switch setting.Key {
+		case "vcs.revision":
+			if setting.Value != "" {
+				buildCommit = setting.Value
+				if len(buildCommit) > 7 {
+					buildCommit = buildCommit[:7]
+				}
+			}
+		case "vcs.time":
+			if setting.Value != "" {
+				buildDate = setting.Value
+			}
+		}
+	}
+	
+	return fmt.Sprintf("%s (commit: %s, built: %s)", buildVersion, buildCommit, buildDate)
 }

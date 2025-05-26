@@ -189,6 +189,18 @@ wtree config set worktree.basedir ~/worktrees
 wtree config set naming.template "{{.Repository}}-{{.Branch}}"
 ```
 
+### `wtree version`
+
+Display version information
+
+```bash
+# Show detailed version information
+wtree version
+
+# Show brief version
+wtree --version
+```
+
 ## Shell Integration
 
 The `wtree cd` command requires shell integration to actually change directories. This is because CLI tools run in a subprocess and cannot directly change the parent shell's working directory.
@@ -324,6 +336,16 @@ wtree add -b hotfix/critical-bug origin/main
 
 # Switch between worktrees quickly
 wtree cd  # Use fuzzy finder to select
+```
+
+### Version Information
+
+```bash
+# Show version information
+wtree version
+
+# Show brief version
+wtree --version
 ```
 
 ## Directory Structure
