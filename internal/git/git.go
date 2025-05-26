@@ -55,9 +55,7 @@ func (g *Git) ListWorktrees() ([]models.Worktree, error) {
 				if strings.HasPrefix(lines[j], "branch ") {
 					branch = strings.TrimPrefix(lines[j], "branch ")
 					// Remove refs/heads/ prefix if present
-					if strings.HasPrefix(branch, "refs/heads/") {
-						branch = strings.TrimPrefix(branch, "refs/heads/")
-					}
+					branch = strings.TrimPrefix(branch, "refs/heads/")
 				} else if strings.HasPrefix(lines[j], "HEAD ") {
 					commitHash = strings.TrimPrefix(lines[j], "HEAD ")
 				} else if strings.HasPrefix(lines[j], "bare") {

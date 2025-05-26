@@ -260,7 +260,7 @@ func removeGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []string
 				repoName = entry.RepositoryInfo.Repository
 			}
 			printer.PrintError(fmt.Errorf("failed to remove %s:%s: %v", repoName, entry.Branch, err))
-			os.Chdir(originalDir)
+			_ = os.Chdir(originalDir)
 			continue
 		}
 
@@ -271,7 +271,7 @@ func removeGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []string
 		printer.PrintSuccess(fmt.Sprintf("Removed worktree: %s:%s", repoName, entry.Branch))
 		
 		// Change back to original directory
-		os.Chdir(originalDir)
+		_ = os.Chdir(originalDir)
 	}
 
 	return nil

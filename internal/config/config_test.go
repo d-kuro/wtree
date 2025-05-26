@@ -13,9 +13,9 @@ func TestGetConfigDir(t *testing.T) {
 	// Test without XDG_CONFIG_HOME
 	t.Run("WithoutXDGConfigHome", func(t *testing.T) {
 		origXDG := os.Getenv("XDG_CONFIG_HOME")
-		defer os.Setenv("XDG_CONFIG_HOME", origXDG)
+		defer func() { _ = os.Setenv("XDG_CONFIG_HOME", origXDG) }()
 
-		os.Unsetenv("XDG_CONFIG_HOME")
+		_ = os.Unsetenv("XDG_CONFIG_HOME")
 
 		dir := getConfigDir()
 		if !filepath.IsAbs(dir) {
@@ -149,8 +149,8 @@ func TestPathExpansion(t *testing.T) {
 	// Test environment variable expansion
 	t.Run("EnvironmentVariableExpansion", func(t *testing.T) {
 		viper.Reset()
-		os.Setenv("TEST_WORKTREE_DIR", "/test/path")
-		defer os.Unsetenv("TEST_WORKTREE_DIR")
+		_ = os.Setenv("TEST_WORKTREE_DIR", "/test/path")
+		defer func() { _ = os.Unsetenv("TEST_WORKTREE_DIR") }()
 
 		viper.Set("worktree.basedir", "$TEST_WORKTREE_DIR/worktrees")
 

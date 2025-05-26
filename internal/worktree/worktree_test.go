@@ -12,7 +12,6 @@ import (
 // mockGit is a mock implementation of git operations for testing
 type mockGit struct {
 	worktrees      []models.Worktree
-	branches       []models.Branch
 	repoName       string
 	addError       error
 	removeError    error
@@ -284,7 +283,7 @@ func TestManagerValidateWorktreePath(t *testing.T) {
 			name: "EmptyDirectory",
 			setupPath: func() string {
 				dir := filepath.Join(t.TempDir(), "empty")
-				os.MkdirAll(dir, 0755)
+				_ = os.MkdirAll(dir, 0755)
 				return dir
 			},
 			wantErr: false,
@@ -293,8 +292,8 @@ func TestManagerValidateWorktreePath(t *testing.T) {
 			name: "NonEmptyDirectory",
 			setupPath: func() string {
 				dir := filepath.Join(t.TempDir(), "nonempty")
-				os.MkdirAll(dir, 0755)
-				os.WriteFile(filepath.Join(dir, "file.txt"), []byte("content"), 0644)
+				_ = os.MkdirAll(dir, 0755)
+				_ = os.WriteFile(filepath.Join(dir, "file.txt"), []byte("content"), 0644)
 				return dir
 			},
 			wantErr: true,
@@ -305,7 +304,7 @@ func TestManagerValidateWorktreePath(t *testing.T) {
 			setupPath: func() string {
 				dir := t.TempDir()
 				file := filepath.Join(dir, "file")
-				os.WriteFile(file, []byte("content"), 0644)
+				_ = os.WriteFile(file, []byte("content"), 0644)
 				return file
 			},
 			wantErr: true,

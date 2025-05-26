@@ -67,7 +67,7 @@ func init() {
 	rootCmd.AddCommand(cdCmd)
 
 	cdCmd.Flags().BoolVar(&printPath, "print-path", true, "Print only the path (for shell integration)")
-	cdCmd.Flags().MarkHidden("print-path")
+	_ = cdCmd.Flags().MarkHidden("print-path")
 	cdCmd.Flags().BoolVarP(&cdGlobal, "global", "g", false, "Navigate to any worktree from the configured base directory")
 }
 

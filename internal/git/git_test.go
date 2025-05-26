@@ -116,7 +116,7 @@ func TestNewFromCwd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get current directory: %v", err)
 	}
-	defer os.Chdir(origDir)
+	defer func() { _ = os.Chdir(origDir) }()
 	
 	if err := os.Chdir(repo.Path); err != nil {
 		t.Fatalf("Failed to change directory: %v", err)
@@ -508,15 +508,6 @@ func TestRunCommand(t *testing.T) {
 	}
 }
 
-// Helper function to compare worktrees
-func containsWorktree(worktrees []models.Worktree, path string) bool {
-	for _, wt := range worktrees {
-		if wt.Path == path {
-			return true
-		}
-	}
-	return false
-}
 
 // Helper function to compare worktrees with path resolution
 func containsWorktreeWithPath(worktrees []models.Worktree, path string) bool {

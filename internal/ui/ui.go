@@ -33,16 +33,16 @@ func (p *Printer) PrintWorktrees(worktrees []models.Worktree, verbose bool) {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	defer w.Flush()
+	defer func() { _ = w.Flush() }()
 
 	if verbose {
-		fmt.Fprintln(w, "BRANCH\tPATH\tCOMMIT\tCREATED\tTYPE")
+		_, _ = fmt.Fprintln(w, "BRANCH\tPATH\tCOMMIT\tCREATED\tTYPE")
 		for _, wt := range worktrees {
 			wtType := "additional"
 			if wt.IsMain {
 				wtType = "main"
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 				wt.Branch,
 				wt.Path,
 				p.truncateHash(wt.CommitHash),
@@ -51,13 +51,13 @@ func (p *Printer) PrintWorktrees(worktrees []models.Worktree, verbose bool) {
 			)
 		}
 	} else {
-		fmt.Fprintln(w, "BRANCH\tPATH")
+		_, _ = fmt.Fprintln(w, "BRANCH\tPATH")
 		for _, wt := range worktrees {
 			marker := ""
 			if wt.IsMain && p.useIcons {
 				marker = "● "
 			}
-			fmt.Fprintf(w, "%s%s\t%s\n", marker, wt.Branch, wt.Path)
+			_, _ = fmt.Fprintf(w, "%s%s\t%s\n", marker, wt.Branch, wt.Path)
 		}
 	}
 }
@@ -77,9 +77,9 @@ func (p *Printer) PrintBranches(branches []models.Branch) {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	defer w.Flush()
+	defer func() { _ = w.Flush() }()
 
-	fmt.Fprintln(w, "BRANCH\tLAST COMMIT\tAUTHOR\tDATE")
+	_, _ = fmt.Fprintln(w, "BRANCH\tLAST COMMIT\tAUTHOR\tDATE")
 	for _, branch := range branches {
 		marker := ""
 		if p.useIcons {
@@ -92,7 +92,7 @@ func (p *Printer) PrintBranches(branches []models.Branch) {
 			}
 		}
 
-		fmt.Fprintf(w, "%s%s\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s%s\t%s\t%s\t%s\n",
 			marker,
 			branch.Name,
 			p.truncateMessage(branch.LastCommit.Message, 50),

@@ -82,7 +82,7 @@ func TestPrintWorktrees(t *testing.T) {
 
 	// Test simple output
 	p.PrintWorktrees(worktrees, false)
-	w.Close()
+	_ = w.Close()
 	out, _ := io.ReadAll(r)
 	output := string(out)
 	os.Stdout = oldStdout
@@ -123,7 +123,7 @@ func TestPrintWorktreesVerbose(t *testing.T) {
 
 	p := New(&models.UIConfig{})
 	p.PrintWorktrees(worktrees, true)
-	w.Close()
+	_ = w.Close()
 	out, _ := io.ReadAll(r)
 	output := string(out)
 	os.Stdout = oldStdout
@@ -141,7 +141,7 @@ func TestPrintWorktreesVerbose(t *testing.T) {
 	if !strings.Contains(output, "abc123de") {
 		t.Error("Verbose output should contain truncated commit hash")
 	}
-	if !strings.Contains(output, "main") && !strings.Contains(output, "main") {
+	if !strings.Contains(output, "main") {
 		t.Error("Verbose output should contain worktree type")
 	}
 }
@@ -154,7 +154,7 @@ func TestPrintWorktreesEmpty(t *testing.T) {
 
 	p := New(&models.UIConfig{})
 	p.PrintWorktrees([]models.Worktree{}, false)
-	w.Close()
+	_ = w.Close()
 	out, _ := io.ReadAll(r)
 	output := string(out)
 	os.Stdout = oldStdout
@@ -187,7 +187,7 @@ func TestPrintWorktreesJSON(t *testing.T) {
 		t.Fatalf("PrintWorktreesJSON() error = %v", err)
 	}
 
-	w.Close()
+	_ = w.Close()
 	out, _ := io.ReadAll(r)
 	os.Stdout = oldStdout
 
@@ -239,7 +239,7 @@ func TestPrintBranches(t *testing.T) {
 
 	p := New(&models.UIConfig{Icons: true})
 	p.PrintBranches(branches)
-	w.Close()
+	_ = w.Close()
 	out, _ := io.ReadAll(r)
 	output := string(out)
 	os.Stdout = oldStdout
@@ -288,7 +288,7 @@ func TestPrintConfig(t *testing.T) {
 
 	p := New(&models.UIConfig{})
 	p.PrintConfig(settings)
-	w.Close()
+	_ = w.Close()
 	out, _ := io.ReadAll(r)
 	output := string(out)
 	os.Stdout = oldStdout
@@ -319,7 +319,7 @@ func TestPrintError(t *testing.T) {
 	testErr := fmt.Errorf("test error message")
 	p.PrintError(testErr)
 
-	w.Close()
+	_ = w.Close()
 	out, _ := io.ReadAll(r)
 	output := string(out)
 	os.Stderr = oldStderr
@@ -339,7 +339,7 @@ func TestPrintSuccess(t *testing.T) {
 	p := New(&models.UIConfig{})
 	p.PrintSuccess("Operation completed successfully")
 
-	w.Close()
+	_ = w.Close()
 	out, _ := io.ReadAll(r)
 	output := string(out)
 	os.Stdout = oldStdout
@@ -359,7 +359,7 @@ func TestPrintWorktreePath(t *testing.T) {
 	p := New(&models.UIConfig{})
 	p.PrintWorktreePath("/path/to/worktree")
 
-	w.Close()
+	_ = w.Close()
 	out, _ := io.ReadAll(r)
 	output := string(out)
 	os.Stdout = oldStdout
@@ -485,7 +485,7 @@ func TestPrintConfigRecursive(t *testing.T) {
 	}
 
 	p.printConfigRecursive("", data)
-	w.Close()
+	_ = w.Close()
 	out, _ := io.ReadAll(r)
 	output := string(out)
 	os.Stdout = oldStdout
@@ -518,7 +518,7 @@ func TestPrintConfigRecursiveWithPrefix(t *testing.T) {
 	}
 
 	p.printConfigRecursive("prefix", data)
-	w.Close()
+	_ = w.Close()
 	out, _ := io.ReadAll(r)
 	output := string(out)
 	os.Stdout = oldStdout
