@@ -1,0 +1,25 @@
+name: build
+on:
+  push:
+    branches: [ main ]
+    tags: [ "v*" ]
+    paths-ignore: [ '**.md' ]
+  pull_request:
+    types: [ opened, synchronize ]
+    paths-ignore: [ '**.md' ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: "./go.mod"
+      # ref: https://text.superbrothers.dev/200510-ensure-go-mod-is-already-tidied-on-ci/
+      - name: Ensure go.mod is already tidied
+        run: go mod tidy && git diff -s --exit-code go.sum
+      #- uses: golangci/golangci-lint-action@v8
+      #  with:
+      #    version: latest
+      - name: Run tests
+        run: go test -race -v ./...
