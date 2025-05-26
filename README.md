@@ -69,6 +69,7 @@ wtree remove feature/old-ui
 - **Fuzzy Finder Interface**: Built-in fuzzy finder for intuitive branch and worktree selection
 - **Smart Navigation**: Quick switching between worktrees with pattern matching
 - **Global Worktree Management**: Access all your worktrees across repositories from anywhere
+- **Tab Completion**: Full shell completion support for branches, worktrees, and configuration
 - **Configuration Management**: Customize worktree directories and naming conventions
 - **Preview Support**: See branch details and recent commits before selection
 - **Clean Operations**: Automatic cleanup of deleted worktree information
@@ -203,14 +204,54 @@ wtree --version
 
 ## Shell Integration
 
+### Tab Completion
+
+`wtree` provides tab completion for all commands, making it easy to discover branches, worktrees, and configuration options.
+
+#### Setup
+
+**Bash:**
+```bash
+# Add to ~/.bashrc
+source <(wtree completion bash)
+```
+
+**Zsh:**
+```bash
+# Add to ~/.zshrc
+source <(wtree completion zsh)
+```
+
+**Fish:**
+```bash
+# Save completion script
+wtree completion fish > ~/.config/fish/completions/wtree.fish
+```
+
+**PowerShell:**
+```powershell
+# Add to your PowerShell profile
+wtree completion powershell | Out-String | Invoke-Expression
+```
+
+After setting up, you can use tab completion:
+```bash
+wtree add <TAB>          # Shows available branches
+wtree cd <TAB>           # Shows available worktrees
+wtree remove <TAB>       # Shows branches and worktrees
+wtree config set <TAB>   # Shows configuration keys
+```
+
+### Directory Navigation
+
 The `wtree cd` command requires shell integration to actually change directories. This is because CLI tools run in a subprocess and cannot directly change the parent shell's working directory.
 
-### How it works
+#### How it works
 
 1. `wtree cd` outputs the selected worktree path instead of trying to change directories
 2. A shell function captures this output and executes the actual `cd` command in your current shell
 
-### Setup
+#### Setup
 
 Add this to your `~/.bashrc` or `~/.zshrc`:
 

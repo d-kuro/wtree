@@ -61,6 +61,12 @@ For Bash/Zsh:
   # Navigate to any worktree from base directory
   wtree cd -g myapp:feature`,
 	RunE: runCd,
+	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		if cdGlobal {
+			return getGlobalWorktreeCompletions(cmd, args, toComplete)
+		}
+		return getWorktreeCompletions(cmd, args, toComplete)
+	},
 }
 
 func init() {

@@ -49,6 +49,12 @@ Use -g flag to always show all worktrees from the base directory.`,
   # Remove from all worktrees in base directory
   wtree remove -g myapp:feature/old`,
 	RunE: runRemove,
+	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		if removeGlobal {
+			return getGlobalWorktreeCompletions(cmd, args, toComplete)
+		}
+		return getRemoveCompletions(cmd, args, toComplete)
+	},
 }
 
 func init() {

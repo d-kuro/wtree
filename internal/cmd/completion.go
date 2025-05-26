@@ -1,0 +1,143 @@
+package cmd
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/d-kuro/wtree/internal/git"
+	"github.com/d-kuro/wtree/internal/registry"
+	"github.com/d-kuro/wtree/internal/worktree"
+	"github.com/spf13/cobra"
+)
+
+// getWorktreeCompletions returns worktree names for shell completion
+func getWorktreeCompletions(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) > 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	g, err := git.NewFromCwd()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	wm := worktree.New(g, nil)
+	worktrees, err := wm.List()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	var completions []string
+	for _, wt := range worktrees {
+		if strings.HasPrefix(wt.Branch, toComplete) || strings.HasPrefix(wt.Path, toComplete) {
+			desc := fmt.Sprintf("Branch: %s", wt.Branch)
+			if wt.Path != "" {
+				desc += fmt.Sprintf(" | Path: %s", wt.Path)
+			}
+			completions = append(completions, fmt.Sprintf("%s\t%s", wt.Branch, desc))
+		}
+	}
+
+	return completions, cobra.ShellCompDirectiveNoFileComp
+}
+
+// getBranchCompletions returns branch names for shell completion
+func getBranchCompletions(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) > 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	g, err := git.NewFromCwd()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	branches, err := g.ListBranches(true)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	var completions []string
+	for _, branch := range branches {
+		if strings.HasPrefix(branch.Name, toComplete) {
+			desc := "Local branch"
+			if branch.IsRemote {
+				desc = "Remote branch"
+			}
+			completions = append(completions, fmt.Sprintf("%s\t%s", branch.Name, desc))
+		}
+	}
+
+	return completions, cobra.ShellCompDirectiveNoFileComp
+}
+
+// getGlobalWorktreeCompletions returns global worktree names (repo:branch format)
+func getGlobalWorktreeCompletions(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) > 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	reg, err := registry.New()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	
+	entries := reg.List()
+
+	var completions []string
+	for _, entry := range entries {
+		fullName := fmt.Sprintf("%s:%s", entry.Repository, entry.Branch)
+		if strings.HasPrefix(fullName, toComplete) || strings.HasPrefix(entry.Repository, toComplete) || strings.HasPrefix(entry.Branch, toComplete) {
+			completions = append(completions, fmt.Sprintf("%s\tPath: %s", fullName, entry.Path))
+		}
+	}
+
+	return completions, cobra.ShellCompDirectiveNoFileComp
+}
+
+// getConfigKeyCompletions returns config key names for shell completion
+func getConfigKeyCompletions(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) > 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	keys := []struct {
+		name string
+		desc string
+	}{
+		{"config.worktree.baseDir", "Base directory for worktrees"},
+		{"config.worktree.nameFormat", "Worktree naming format"},
+		{"config.discovery.enable", "Enable repository discovery"},
+		{"config.discovery.paths", "Paths to search for repositories"},
+	}
+
+	var completions []string
+	for _, key := range keys {
+		if strings.HasPrefix(key.name, toComplete) {
+			completions = append(completions, fmt.Sprintf("%s\t%s", key.name, key.desc))
+		}
+	}
+
+	return completions, cobra.ShellCompDirectiveNoFileComp
+}
+
+// getRemoveCompletions returns both worktree and branch names for removal
+func getRemoveCompletions(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	worktreeCompletions, _ := getWorktreeCompletions(cmd, args, toComplete)
+	branchCompletions, _ := getBranchCompletions(cmd, args, toComplete)
+	
+	// Combine both completions
+	completions := append(worktreeCompletions, branchCompletions...)
+	
+	// Remove duplicates
+	seen := make(map[string]bool)
+	var uniqueCompletions []string
+	for _, comp := range completions {
+		if !seen[comp] {
+			seen[comp] = true
+			uniqueCompletions = append(uniqueCompletions, comp)
+		}
+	}
+	
+	return uniqueCompletions, cobra.ShellCompDirectiveNoFileComp
+}

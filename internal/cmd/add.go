@@ -37,6 +37,7 @@ Use -i flag to interactively select a branch using fuzzy finder.`,
   # Interactive branch selection
   wtree add -i`,
 	RunE: runAdd,
+	ValidArgsFunction: getBranchCompletions,
 }
 
 func init() {

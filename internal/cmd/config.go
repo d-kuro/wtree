@@ -42,6 +42,7 @@ Configuration keys follow a dot notation format (e.g., worktree.basedir).`,
   wtree config set ui.color true`,
 	Args: cobra.ExactArgs(2),
 	RunE: runConfigSet,
+	ValidArgsFunction: getConfigKeyCompletions,
 }
 
 // configGetCmd represents the config get command.
@@ -56,6 +57,7 @@ var configGetCmd = &cobra.Command{
   wtree config get naming.template`,
 	Args: cobra.ExactArgs(1),
 	RunE: runConfigGet,
+	ValidArgsFunction: getConfigKeyCompletions,
 }
 
 func init() {

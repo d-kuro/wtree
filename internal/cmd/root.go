@@ -38,7 +38,8 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.CompletionOptions.DisableDefaultCmd = true
+	rootCmd.CompletionOptions.DisableDefaultCmd = false
+	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 }
 
 // initConfig reads in config file and ENV variables if set.
