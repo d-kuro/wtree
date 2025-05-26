@@ -18,8 +18,8 @@ jobs:
       # ref: https://text.superbrothers.dev/200510-ensure-go-mod-is-already-tidied-on-ci/
       - name: Ensure go.mod is already tidied
         run: go mod tidy && git diff -s --exit-code go.sum
-      #- uses: golangci/golangci-lint-action@v8
-      #  with:
-      #    version: latest
+      - uses: golangci/golangci-lint-action@v8
+        with:
+          version: latest
       - name: Run tests
         run: go test -race -v ./...
