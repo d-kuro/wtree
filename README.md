@@ -259,9 +259,19 @@ Add this to your `~/.bashrc` or `~/.zshrc`:
 wtree() {
   case "$1" in
     cd)
-      local dir=$(command wtree cd --print-path "${@:2}")
-      if [ -n "$dir" ]; then
-        cd "$dir"
+      # Check if -h or --help is passed
+      if [[ " ${@:2} " =~ " -h " ]] || [[ " ${@:2} " =~ " --help " ]]; then
+        command wtree "$@"
+      else
+        local dir=$(command wtree cd --print-path "${@:2}" 2>&1)
+        # Check if the command succeeded
+        if [ $? -eq 0 ] && [ -n "$dir" ]; then
+          cd "$dir"
+        else
+          # If command failed, show the error message
+          echo "$dir" >&2
+          return 1
+        fi
       fi
       ;;
     *)
@@ -344,6 +354,7 @@ wtree add -b feature/api
 wtree add -b bugfix/login
 
 # Launch AI agents in parallel (example with Claude Code)
+# Without shell integration:
 # Terminal 1
 cd $(wtree cd --print-path auth) && claude
 
@@ -352,6 +363,16 @@ cd $(wtree cd --print-path api) && claude
 
 # Terminal 3
 cd $(wtree cd --print-path login) && claude
+
+# With shell integration enabled (simpler):
+# Terminal 1
+wtree cd auth && claude
+
+# Terminal 2
+wtree cd api && claude
+
+# Terminal 3
+wtree cd login && claude
 ```
 
 ### Batch Operations

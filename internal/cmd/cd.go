@@ -39,9 +39,19 @@ For Bash/Zsh:
   wtree() {
     case "$1" in
       cd)
-        local dir=$(command wtree cd --print-path "${@:2}")
-        if [ -n "$dir" ]; then
-          cd "$dir"
+        # Check if -h or --help is passed
+        if [[ " ${@:2} " =~ " -h " ]] || [[ " ${@:2} " =~ " --help " ]]; then
+          command wtree "$@"
+        else
+          local dir=$(command wtree cd --print-path "${@:2}" 2>&1)
+          # Check if the command succeeded
+          if [ $? -eq 0 ] && [ -n "$dir" ]; then
+            cd "$dir"
+          else
+            # If command failed, show the error message
+            echo "$dir" >&2
+            return 1
+          fi
         fi
         ;;
       *)
