@@ -67,8 +67,9 @@
 Create new worktrees with automatic URL-based path generation
 
 - Supports both new and existing branches
-- Interactive branch selection with fuzzy finder
+- Interactive branch selection with fuzzy finder (`-i` flag)
 - Custom path specification when needed
+- Remote branch support
 
 #### `wtree list [options]`
 
@@ -77,6 +78,8 @@ Display worktrees with context-aware behavior
 - **Inside Repository**: Shows local worktrees by default
 - **Outside Repository**: Shows all discovered worktrees
 - **Global Flag**: Always shows all worktrees regardless of location
+- **Output Formats**: Table (default), verbose (`-v`), JSON (`--json`)
+- Shows current worktree with bullet indicator
 
 #### `wtree cd [pattern]`
 
@@ -85,6 +88,7 @@ Navigate to worktree directories with shell integration
 - Fuzzy finder for interactive selection
 - Pattern matching for quick navigation
 - Global mode for cross-repository navigation
+- Repository prefix support (e.g., `myapp:feature`)
 
 #### `wtree remove [pattern]`
 
@@ -92,9 +96,33 @@ Delete worktrees with safety features and optional branch deletion
 
 - Interactive selection and confirmation
 - Pattern matching for batch operations
-- Dry-run mode for safety
+- Dry-run mode for safety (`--dry-run`)
 - Optional branch deletion with `-b/--delete-branch`
 - Safe deletion by default, force deletion with `--force-delete-branch`
+- Multiple selection support in interactive mode
+
+#### `wtree prune`
+
+Clean up stale worktree information
+
+- Removes administrative files for deleted worktrees
+- Handles manually deleted directories
+- No effect on properly removed worktrees
+
+#### `wtree config`
+
+Manage configuration settings
+
+- View current configuration (`wtree config list`)
+- Set configuration values (`wtree config set <key> <value>`)
+- Hierarchical key support (e.g., `worktree.basedir`)
+
+#### `wtree version`
+
+Display version information
+
+- Detailed version with build information
+- Brief version with `--version` flag
 
 ### Global Operation Modes
 
@@ -116,11 +144,18 @@ wtree/
 │   ├── discovery/        # Filesystem-based worktree discovery
 │   ├── finder/           # Fuzzy finder integration
 │   ├── git/              # Git operations wrapper
+│   ├── registry/         # Worktree registry (deprecated)
 │   ├── ui/               # User interface components
 │   ├── url/              # Repository URL parsing and hierarchy
 │   └── worktree/         # Worktree management logic
 └── pkg/
-    └── models/           # Data structures
+    ├── cache/            # Caching utilities
+    ├── models/           # Data structures
+    ├── option/           # Option types and utilities
+    ├── pipeline/         # Pipeline processing utilities
+    ├── repository/       # Repository information handling
+    ├── result/           # Result type utilities
+    └── utils/            # General utilities
 ```
 
 ### Key Components
@@ -142,8 +177,9 @@ wtree/
 #### Configuration Management (`internal/config/`)
 
 - TOML-based configuration with sensible defaults
-- Template-based path generation (deprecated in favor of URL hierarchy)
+- Template-based path generation (maintained for backward compatibility)
 - UI and finder customization options
+- Supports color, icons, and tilde home display preferences
 
 #### Completion System (`internal/cmd/completion.go`)
 
@@ -151,6 +187,21 @@ wtree/
 - Dynamic completion based on current repository state
 - Supports branches, worktrees, and configuration keys
 - Context-aware completions (local vs global mode)
+
+### Tab Completion
+
+Tab completion is supported for all major shells:
+
+- **Bash**: `source <(wtree completion bash)`
+- **Zsh**: `source <(wtree completion zsh)`
+- **Fish**: `wtree completion fish > ~/.config/fish/completions/wtree.fish`
+- **PowerShell**: `wtree completion powershell | Out-String | Invoke-Expression`
+
+Completion features:
+- Branch names for `add` and `remove` commands
+- Worktree names for `cd` and `remove` commands
+- Configuration keys for `config set` command
+- Flag completions for all commands
 
 ## Configuration
 
@@ -165,14 +216,23 @@ auto_mkdir = true
 preview = true
 preview_size = 3
 
+[naming]
+# Template for directory names (optional, URL hierarchy is preferred)
+template = "{{.Host}}/{{.Owner}}/{{.Repository}}/{{.Branch}}"
+# Character replacements for filesystem compatibility
+sanitize_chars = { "/" = "-", ":" = "-" }
+
 [ui]
 color = true
 icons = true
+tilde_home = true  # Display ~ instead of full home path
 ```
 
-### URL-Based Path Generation
+### Configuration Management
 
-Paths are automatically generated using repository URL hierarchy, replacing the previous template-based system for better conflict prevention and consistency.
+- Template-based naming is maintained for backward compatibility
+- URL hierarchy is the recommended approach for new installations
+- Character sanitization ensures filesystem compatibility across platforms
 
 ## Shell Integration
 
@@ -210,9 +270,45 @@ wtree() {
 
 This approach is consistent with other popular tools like `z`, `fasd`, `autojump`, and `fzf`.
 
+### Enhanced Shell Integration for Command Chaining
+
+The standard shell function doesn't support command chaining (e.g., `wtree cd && claude`) because the directory change happens after the entire command line completes. To address this, we provide an enhanced helper function:
+
+```bash
+wtcd() {
+  local pattern=""
+  
+  # If first argument doesn't start with -, treat it as pattern
+  if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
+    pattern="$1"
+    shift
+  fi
+  
+  # Get the directory path
+  local dir
+  if [ -n "$pattern" ]; then
+    dir=$(command wtree cd --print-path "$pattern" 2>&1)
+  else
+    dir=$(command wtree cd --print-path 2>&1)
+  fi
+  
+  # Check if wtree cd succeeded
+  if [ $? -eq 0 ] && [ -n "$dir" ]; then
+    cd "$dir"
+    # If additional arguments provided, execute them as a command
+    if [ $# -gt 0 ]; then
+      "$@"
+    fi
+  else
+    echo "$dir" >&2
+    return 1
+  fi
+}
+```
+
 ### Error Handling
 
-The shell function includes proper error handling to ensure:
+The shell functions include proper error handling to ensure:
 - Help flags are passed through correctly
 - Error messages are displayed to the user
 - Failed commands don't attempt directory changes
