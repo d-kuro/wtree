@@ -81,21 +81,11 @@ Display worktrees with context-aware behavior
 - **Output Formats**: Table (default), verbose (`-v`), JSON (`--json`)
 - Shows current worktree with bullet indicator
 
-#### `gwq cd [pattern]`
-
-Navigate to worktree directories with shell integration
-
-- Fuzzy finder for interactive selection
-- Pattern matching for quick navigation
-- Global mode for cross-repository navigation
-- Repository prefix support (e.g., `myapp:feature`)
-- Shows setup instructions when shell function not configured
-
 #### `gwq get [pattern]`
 
 Retrieve worktree path for shell substitution
 
-- Alternative to `gwq cd` without shell integration requirement
+- Simple path retrieval for shell substitution
 - Pattern matching with fuzzy finder for multiple matches
 - Null-terminated output option (`-0`) for xargs compatibility
 - Global mode support for cross-repository operations
@@ -255,120 +245,6 @@ tilde_home = true  # Display ~ instead of full home path
 - URL hierarchy is the recommended approach for new installations
 - Character sanitization ensures filesystem compatibility across platforms
 
-## Shell Integration
-
-### Technical Requirement
-
-Shell integration is necessary for `gwq cd` because CLI tools run in child processes and cannot directly change the parent shell's working directory due to Unix process isolation.
-
-### Alternatives Without Shell Integration
-
-1. **`gwq get`**: Returns worktree path for command substitution
-   ```bash
-   cd $(gwq get feature)
-   ```
-
-2. **`gwq exec`**: Executes commands in worktree directory
-   ```bash
-   gwq exec feature -- npm test
-   gwq exec --stay feature -- bash  # Opens shell in worktree
-   ```
-
-### Implementation
-
-```bash
-gwq() {
-  case "$1" in
-    cd)
-      # Check if -h or --help is passed
-      if [[ " ${@:2} " =~ " -h " ]] || [[ " ${@:2} " =~ " --help " ]]; then
-        command gwq "$@"
-      else
-        local dir=$(command gwq cd --print-path "${@:2}" 2>&1)
-        # Check if the command succeeded
-        if [ $? -eq 0 ] && [ -n "$dir" ]; then
-          cd "$dir"
-        else
-          # If command failed, show the error message
-          echo "$dir" >&2
-          return 1
-        fi
-      fi
-      ;;
-    *)
-      command gwq "$@"
-      ;;
-  esac
-}
-```
-
-Fish shell implementation:
-```fish
-function gwq
-  if test "$argv[1]" = "cd"
-    # Check if -h or --help is passed
-    if contains -- -h $argv[2..-1]; or contains -- --help $argv[2..-1]
-      command gwq $argv
-    else
-      set -l dir (command gwq cd --print-path $argv[2..-1] 2>&1)
-      if test $status -eq 0; and test -n "$dir"
-        cd $dir
-      else
-        echo "$dir" >&2
-        return 1
-      end
-    end
-  else
-    command gwq $argv
-  end
-end
-```
-
-This approach is consistent with other popular tools like `z`, `fasd`, `autojump`, and `fzf`.
-
-### Enhanced Shell Integration for Command Chaining
-
-The standard shell function doesn't support command chaining (e.g., `gwq cd && claude`) because the directory change happens after the entire command line completes. To address this, we provide an enhanced helper function:
-
-```bash
-gwcd() {
-  local pattern=""
-  
-  # If first argument doesn't start with -, treat it as pattern
-  if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
-    pattern="$1"
-    shift
-  fi
-  
-  # Get the directory path
-  local dir
-  if [ -n "$pattern" ]; then
-    dir=$(command gwq cd --print-path "$pattern" 2>&1)
-  else
-    dir=$(command gwq cd --print-path 2>&1)
-  fi
-  
-  # Check if gwq cd succeeded
-  if [ $? -eq 0 ] && [ -n "$dir" ]; then
-    cd "$dir"
-    # If additional arguments provided, execute them as a command
-    if [ $# -gt 0 ]; then
-      "$@"
-    fi
-  else
-    echo "$dir" >&2
-    return 1
-  fi
-}
-```
-
-### Error Handling
-
-The shell functions include proper error handling to ensure:
-- Help flags are passed through correctly
-- Error messages are displayed to the user
-- Failed commands don't attempt directory changes
-- Proper exit codes are returned
 
 ## Use Cases
 
@@ -438,21 +314,20 @@ The shell functions include proper error handling to ensure:
 - `--force-delete-branch`: Force deletion (`git branch -D`) for unmerged branches
 - Clear success messages for both worktree and branch operations
 
-### Shell Integration Alternatives
+### Simplified Navigation Commands
 
-**Decision**: Provide multiple methods for worktree navigation
+**Decision**: Remove `gwq cd` in favor of simpler alternatives
 **Rationale**:
 
-- **Reduced Friction**: Not all users want to configure shell functions
-- **Flexibility**: Different workflows require different approaches
-- **Compatibility**: Some environments may restrict shell modifications
-- **Progressive Enhancement**: Users can adopt shell integration when ready
+- **Reduced Complexity**: No shell function configuration required
+- **Better UX**: Users can start using the tool immediately
+- **Unix Philosophy**: Each command does one thing well
+- **Flexibility**: Users choose the approach that fits their workflow
 
 **Implementation**:
-- `gwq cd`: Traditional approach with shell function requirement
 - `gwq get`: Simple path retrieval for command substitution
 - `gwq exec`: Direct command execution without directory change
-- Clear setup instructions when shell function not configured
+- `gwq exec --stay`: Opens interactive shell in worktree
 
 ## Future Considerations
 

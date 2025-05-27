@@ -59,8 +59,8 @@ gwq add -b feature/new-ui
 # List all worktrees
 gwq list
 
-# Navigate to a worktree (requires shell integration)
-gwq cd
+# Get worktree path
+gwq get
 
 # Remove a worktree
 gwq remove feature/old-ui
@@ -82,7 +82,7 @@ gwq remove feature/old-ui
 
 `gwq` automatically discovers all worktrees in your configured base directory, allowing you to access them from anywhere on your system:
 
-- **Outside Git Repositories**: When you run `gwq list` or `gwq cd` outside a git repository, it automatically discovers and shows all worktrees in the configured base directory
+- **Outside Git Repositories**: When you run `gwq list` outside a git repository, it automatically discovers and shows all worktrees in the configured base directory
 - **Inside Git Repositories**: By default, shows only worktrees for the current repository. Use the `-g` flag to see all worktrees from the base directory
 - **Automatic Discovery**: All worktrees in the base directory are automatically discovered, including those created with native git commands
 - **No Registry Required**: Uses filesystem scanning instead of maintaining a separate registry file
@@ -140,27 +140,10 @@ gwq list --json
 gwq list -g
 ```
 
-### `gwq cd`
-
-Navigate to worktree directory (requires shell integration)
-
-```bash
-# Select worktree using fuzzy finder
-gwq cd
-
-# Pattern matching
-gwq cd feature
-
-# Direct specification
-gwq cd feature/new-ui
-
-# Navigate to any worktree from base directory (from anywhere)
-gwq cd -g myapp:feature
-```
 
 ### `gwq get`
 
-Get worktree path (alternative to `gwq cd` without shell function)
+Get worktree path
 
 ```bash
 # Get path and change directory
@@ -303,169 +286,11 @@ gwq completion powershell | Out-String | Invoke-Expression
 After setting up, you can use tab completion:
 ```bash
 gwq add <TAB>          # Shows available branches
-gwq cd <TAB>           # Shows available worktrees
+gwq get <TAB>          # Shows available worktrees
 gwq remove <TAB>       # Shows branches and worktrees
 gwq config set <TAB>   # Shows configuration keys
 ```
 
-### Directory Navigation
-
-The `gwq cd` command requires shell integration to actually change directories. This is because CLI tools run in a subprocess and cannot directly change the parent shell's working directory.
-
-**Alternatives without shell integration:**
-- Use `gwq get` to retrieve paths: `cd $(gwq get feature)`
-- Use `gwq exec` to run commands in worktrees: `gwq exec feature -- npm test`
-- Use `gwq exec --stay` to open a shell in worktree: `gwq exec --stay feature -- bash`
-
-#### How it works
-
-1. `gwq cd` outputs the selected worktree path instead of trying to change directories
-2. A shell function captures this output and executes the actual `cd` command in your current shell
-
-#### Setup
-
-Add this to your `~/.bashrc` or `~/.zshrc`:
-
-```bash
-gwq() {
-  case "$1" in
-    cd)
-      # Check if -h or --help is passed
-      if [[ " ${@:2} " =~ " -h " ]] || [[ " ${@:2} " =~ " --help " ]]; then
-        command gwq "$@"
-      else
-        local dir=$(command gwq cd --print-path "${@:2}" 2>&1)
-        # Check if the command succeeded
-        if [ $? -eq 0 ] && [ -n "$dir" ]; then
-          cd "$dir"
-        else
-          # If command failed, show the error message
-          echo "$dir" >&2
-          return 1
-        fi
-      fi
-      ;;
-    *)
-      command gwq "$@"
-      ;;
-  esac
-}
-```
-
-After adding this function and reloading your shell (`source ~/.bashrc` or `source ~/.zshrc`), you can use `gwq cd` to navigate to worktrees:
-
-```bash
-# Interactive selection with fuzzy finder
-gwq cd
-
-# Direct navigation
-gwq cd feature/new-ui
-```
-
-For Fish shell, add this to your `~/.config/fish/config.fish`:
-
-```fish
-function gwq
-  if test "$argv[1]" = "cd"
-    # Check if -h or --help is passed
-    if contains -- -h $argv[2..-1]; or contains -- --help $argv[2..-1]
-      command gwq $argv
-    else
-      set -l dir (command gwq cd --print-path $argv[2..-1] 2>&1)
-      if test $status -eq 0; and test -n "$dir"
-        cd $dir
-      else
-        echo "$dir" >&2
-        return 1
-      end
-    end
-  else
-    command gwq $argv
-  end
-end
-```
-
-#### Enhanced Shell Integration for Command Chaining
-
-If you want to use `gwq cd` with command chaining (e.g., `gwq cd && claude`), the standard shell function won't work as expected because the directory change happens after the entire command line completes.
-
-To solve this, add this helper function to your shell configuration:
-
-```bash
-# Helper function to change to a worktree directory and run a command
-gwcd() {
-  local pattern=""
-
-  # If first argument doesn't start with -, treat it as pattern
-  if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
-    pattern="$1"
-    shift
-  fi
-
-  # Get the directory path
-  local dir
-  if [ -n "$pattern" ]; then
-    dir=$(command gwq cd --print-path "$pattern" 2>&1)
-  else
-    dir=$(command gwq cd --print-path 2>&1)
-  fi
-
-  # Check if gwq cd succeeded
-  if [ $? -eq 0 ] && [ -n "$dir" ]; then
-    cd "$dir"
-    # If additional arguments provided, execute them as a command
-    if [ $# -gt 0 ]; then
-      "$@"
-    fi
-  else
-    echo "$dir" >&2
-    return 1
-  fi
-}
-```
-
-Usage examples:
-```bash
-# Interactive selection, then run claude
-gwcd && claude
-
-# Pattern match, then run claude
-gwcd feature && claude
-
-# Direct command execution (recommended)
-gwcd feature claude
-
-# Works with any command
-gwcd api npm test
-gwcd auth git status
-```
-
-<details>
-<summary>Why is shell integration required?</summary>
-
-Due to Unix/Linux process model constraints, command-line tools cannot directly change the parent shell's working directory:
-
-- When you run `gwq cd`, it creates a new process
-- Even if that process calls `chdir()`, it only affects its own process
-- When the process exits, the shell remains in the original directory
-
-This is a security feature - child processes cannot modify parent process state. Other popular tools like `z`, `fasd`, `autojump`, and `fzf` use the same shell function approach.
-
-Alternative usage without shell integration:
-```bash
-# Method 1: Use gwq get
-cd $(gwq get feature/new-ui)
-
-# Method 2: Use gwq exec to run commands
-gwq exec feature/new-ui -- npm test
-
-# Method 3: Use gwq exec --stay to open shell
-gwq exec --stay feature/new-ui -- bash
-
-# Method 4: Get path manually (legacy)
-cd $(gwq cd --print-path feature/new-ui)
-```
-</details>
 
 ## Configuration
 
@@ -531,15 +356,15 @@ gwq exec --stay api -- claude
 # Terminal 3
 gwq exec --stay login -- claude
 
-# Method 3: With shell integration enabled
+# Method 3: Using direct cd with gwq get
 # Terminal 1
-gwq cd auth && claude
+cd $(gwq get auth) && claude
 
 # Terminal 2
-gwq cd api && claude
+cd $(gwq get api) && claude
 
 # Terminal 3
-gwq cd login && claude
+cd $(gwq get login) && claude
 ```
 
 ### Batch Operations
@@ -564,7 +389,7 @@ gwq add -b pr-123-review origin/pull/123/head
 gwq add -b hotfix/critical-bug origin/main
 
 # Switch between worktrees quickly
-gwq cd  # Use fuzzy finder to select
+cd $(gwq get)  # Use fuzzy finder to select
 ```
 
 ### Version Information
