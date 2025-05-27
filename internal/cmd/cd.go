@@ -8,10 +8,8 @@ import (
 	"github.com/d-kuro/gwq/internal/discovery"
 	"github.com/d-kuro/gwq/internal/finder"
 	"github.com/d-kuro/gwq/internal/git"
-	"github.com/d-kuro/gwq/internal/ui"
 	"github.com/d-kuro/gwq/internal/worktree"
 	"github.com/d-kuro/gwq/pkg/models"
-	"github.com/d-kuro/gwq/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -94,13 +92,11 @@ func runCd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	printer := ui.New(&cfg.UI)
-
 	// Check if we're in a git repository
 	g, err := git.NewFromCwd()
 	if err != nil || cdGlobal {
 		// Not in a git repo or global flag set - use global worktrees
-		return navigateGlobalWorktree(cfg, printer, args)
+		return navigateGlobalWorktree(cfg, args)
 	}
 
 	// In a git repo - use local worktrees
@@ -150,17 +146,17 @@ func runCd(cmd *cobra.Command, args []string) error {
 	if printPath {
 		fmt.Println(path)
 	} else {
-		displayPath := path
-		if cfg.UI.TildeHome {
-			displayPath = utils.TildePath(path)
+		pattern := ""
+		if len(args) > 0 {
+			pattern = args[0]
 		}
-		printer.PrintSuccess(fmt.Sprintf("Navigate to: %s", displayPath))
+		return showShellSetupInstructions(pattern)
 	}
 
 	return nil
 }
 
-func navigateGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []string) error {
+func navigateGlobalWorktree(cfg *models.Config, args []string) error {
 	entries, err := discovery.DiscoverGlobalWorktrees(cfg.Worktree.BaseDir)
 	if err != nil {
 		return fmt.Errorf("failed to discover worktrees: %w", err)
@@ -234,12 +230,71 @@ func navigateGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []stri
 	if printPath {
 		fmt.Println(path)
 	} else {
-		displayPath := path
-		if cfg.UI.TildeHome {
-			displayPath = utils.TildePath(path)
+		pattern := ""
+		if len(args) > 0 {
+			pattern = args[0]
 		}
-		printer.PrintSuccess(fmt.Sprintf("Navigate to: %s", displayPath))
+		return showShellSetupInstructions(pattern)
 	}
 
 	return nil
+}
+
+func showShellSetupInstructions(pattern string) error {
+	fmt.Println("Error: gwq cd requires a shell function to change directories.")
+	fmt.Println("\nTo use this command, add the following to your shell configuration:")
+	fmt.Println("\nFor Bash/Zsh (~/.bashrc or ~/.zshrc):")
+	fmt.Println(`
+gwq() {
+  case "$1" in
+    cd)
+      # Check if -h or --help is passed
+      if [[ " ${@:2} " =~ " -h " ]] || [[ " ${@:2} " =~ " --help " ]]; then
+        command gwq "$@"
+      else
+        local dir=$(command gwq cd --print-path "${@:2}" 2>&1)
+        # Check if the command succeeded
+        if [ $? -eq 0 ] && [ -n "$dir" ]; then
+          cd "$dir"
+        else
+          # If failed or cancelled, show the error message
+          echo "$dir" >&2
+          return 1
+        fi
+      fi
+      ;;
+    *)
+      command gwq "$@"
+      ;;
+  esac
+}`)
+	fmt.Println("\nFor Fish (~/.config/fish/config.fish):")
+	fmt.Println(`
+function gwq
+  if test "$argv[1]" = "cd"
+    # Check if -h or --help is passed
+    if contains -- -h $argv[2..-1]; or contains -- --help $argv[2..-1]
+      command gwq $argv
+    else
+      set -l dir (command gwq cd --print-path $argv[2..-1] 2>&1)
+      if test $status -eq 0; and test -n "$dir"
+        cd $dir
+      else
+        echo "$dir" >&2
+        return 1
+      end
+    end
+  else
+    command gwq $argv
+  end
+end`)
+	fmt.Println("\nAlternatively, use one of these commands:")
+	if pattern != "" {
+		fmt.Printf("  cd $(gwq get %s)          # Simple path retrieval\n", pattern)
+		fmt.Printf("  gwq exec %s -- command    # Execute command in worktree\n", pattern)
+	} else {
+		fmt.Println("  cd $(gwq get)             # Simple path retrieval")
+		fmt.Println("  gwq exec -- command       # Execute command in worktree")
+	}
+	return fmt.Errorf("shell function not configured")
 }

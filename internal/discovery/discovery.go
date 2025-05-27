@@ -184,3 +184,27 @@ func ConvertToWorktreeModels(entries []*GlobalWorktreeEntry, showRepoName bool) 
 	
 	return worktrees
 }
+
+// FilterGlobalWorktrees filters worktrees by pattern matching.
+func FilterGlobalWorktrees(entries []*GlobalWorktreeEntry, pattern string) []*GlobalWorktreeEntry {
+	pattern = strings.ToLower(pattern)
+	var matches []*GlobalWorktreeEntry
+	
+	for _, entry := range entries {
+		branchLower := strings.ToLower(entry.Branch)
+		var repoName string
+		if entry.RepositoryInfo != nil {
+			repoName = strings.ToLower(entry.RepositoryInfo.Repository)
+		}
+		
+		// Match against branch name, path, repo name, or repo:branch pattern
+		if strings.Contains(branchLower, pattern) || 
+		   strings.Contains(strings.ToLower(entry.Path), pattern) ||
+		   strings.Contains(repoName, pattern) ||
+		   strings.Contains(repoName+":"+branchLower, pattern) {
+			matches = append(matches, entry)
+		}
+	}
+	
+	return matches
+}
