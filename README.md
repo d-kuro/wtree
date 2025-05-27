@@ -181,6 +181,12 @@ gwq exec --stay feature -- npm install
 
 # Execute in global worktree
 gwq exec -g myapp:feature -- make build
+
+# Interactive selection with fuzzy finder (when multiple matches)
+gwq exec feature -- npm test  # Shows fuzzy finder if multiple feature/* branches exist
+
+# Select from all worktrees with fuzzy finder
+gwq exec -- npm test  # Shows all worktrees in fuzzy finder
 ```
 
 ### `gwq remove`

@@ -97,6 +97,8 @@ Execute commands in worktree directory without changing current directory
 
 - Runs commands in subshell with worktree as working directory
 - Pattern matching with fuzzy finder for worktree selection
+- Interactive fuzzy finder when pattern matches multiple worktrees
+- Shows all worktrees in fuzzy finder when no pattern is provided
 - `--stay` option to remain in worktree after command execution
 - Global mode support for cross-repository operations
 - Eliminates need for shell integration for temporary operations
