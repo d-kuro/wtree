@@ -3,10 +3,10 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/d-kuro/wtree/internal/config"
-	"github.com/d-kuro/wtree/internal/git"
-	"github.com/d-kuro/wtree/internal/ui"
-	"github.com/d-kuro/wtree/internal/worktree"
+	"github.com/d-kuro/gwq/internal/config"
+	"github.com/d-kuro/gwq/internal/git"
+	"github.com/d-kuro/gwq/internal/ui"
+	"github.com/d-kuro/gwq/internal/worktree"
 	"github.com/spf13/cobra"
 )
 
@@ -19,7 +19,7 @@ var pruneCmd = &cobra.Command{
 This command removes administrative files from .git/worktrees for worktrees
 whose working directories have been deleted from the filesystem.`,
 	Example: `  # Clean up stale worktree information
-  wtree prune`,
+  gwq prune`,
 	RunE: runPrune,
 }
 

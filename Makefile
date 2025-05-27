@@ -1,6 +1,6 @@
 # Variables
-BINARY_NAME := wtree
-PACKAGE := github.com/d-kuro/wtree
+BINARY_NAME := gwq
+PACKAGE := github.com/d-kuro/gwq
 VERSION := $(shell git describe --tags --always --dirty)
 LDFLAGS := -s -w -X main.version=$(VERSION)
 GO_FILES := $(shell find . -name '*.go' -type f -not -path './vendor/*')
@@ -18,22 +18,22 @@ all: clean build
 ## build: Build the binary
 build:
 	@echo "Building $(BINARY_NAME)..."
-	@go build -ldflags "$(LDFLAGS)" -o $(BINARY_NAME) cmd/wtree/main.go
+	@go build -ldflags "$(LDFLAGS)" -o $(BINARY_NAME) cmd/gwq/main.go
 
 ## build-all: Build for multiple platforms
 build-all: clean
 	@echo "Building for multiple platforms..."
 	@mkdir -p $(BUILD_DIR)
 	# macOS AMD64
-	@GOOS=darwin GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64 cmd/wtree/main.go
+	@GOOS=darwin GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64 cmd/gwq/main.go
 	# macOS ARM64 (Apple Silicon)
-	@GOOS=darwin GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 cmd/wtree/main.go
+	@GOOS=darwin GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 cmd/gwq/main.go
 	# Linux AMD64
-	@GOOS=linux GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 cmd/wtree/main.go
+	@GOOS=linux GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 cmd/gwq/main.go
 	# Linux ARM64
-	@GOOS=linux GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 cmd/wtree/main.go
+	@GOOS=linux GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 cmd/gwq/main.go
 	# Windows AMD64
-	@GOOS=windows GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe cmd/wtree/main.go
+	@GOOS=windows GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe cmd/gwq/main.go
 	@echo "Build complete. Binaries are in $(BUILD_DIR)/"
 
 ## clean: Clean build files
@@ -99,7 +99,7 @@ mod:
 ## install: Install the binary
 install: build
 	@echo "Installing $(BINARY_NAME)..."
-	@go install -ldflags "$(LDFLAGS)" ./cmd/wtree
+	@go install -ldflags "$(LDFLAGS)" ./cmd/gwq
 
 ## check: Run all checks (fmt, vet, lint, test)
 check: fmt vet lint test

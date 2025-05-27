@@ -1,4 +1,4 @@
-// Package config provides configuration management for the wtree application.
+// Package config provides configuration management for the gwq application.
 package config
 
 import (
@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/d-kuro/wtree/pkg/models"
+	"github.com/d-kuro/gwq/pkg/models"
 	"github.com/spf13/viper"
 )
 
@@ -21,9 +21,9 @@ func getConfigDir() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		// Fallback to current directory if home is not available
-		return filepath.Join(".", ".config", "wtree")
+		return filepath.Join(".", ".config", "gwq")
 	}
-	return filepath.Join(home, ".config", "wtree")
+	return filepath.Join(home, ".config", "gwq")
 }
 
 // Init initializes the configuration system, creating default config if needed.

@@ -29,8 +29,8 @@ func TestTildePath(t *testing.T) {
 		},
 		{
 			name:     "Deep subdirectory",
-			input:    filepath.Join(home, "ghq", "github.com", "d-kuro", "wtree"),
-			expected: "~/ghq/github.com/d-kuro/wtree",
+			input:    filepath.Join(home, "ghq", "github.com", "d-kuro", "gwq"),
+			expected: "~/ghq/github.com/d-kuro/gwq",
 		},
 		{
 			name:     "Non-home path",

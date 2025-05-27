@@ -35,7 +35,7 @@ func New() (*Registry, error) {
 		configDir = filepath.Join(home, ".config")
 	}
 	
-	registryDir := filepath.Join(configDir, "wtree")
+	registryDir := filepath.Join(configDir, "gwq")
 	if err := os.MkdirAll(registryDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create registry directory: %w", err)
 	}

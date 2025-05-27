@@ -3,12 +3,12 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/d-kuro/wtree/internal/config"
-	"github.com/d-kuro/wtree/internal/discovery"
-	"github.com/d-kuro/wtree/internal/git"
-	"github.com/d-kuro/wtree/internal/ui"
-	"github.com/d-kuro/wtree/internal/worktree"
-	"github.com/d-kuro/wtree/pkg/models"
+	"github.com/d-kuro/gwq/internal/config"
+	"github.com/d-kuro/gwq/internal/discovery"
+	"github.com/d-kuro/gwq/internal/git"
+	"github.com/d-kuro/gwq/internal/ui"
+	"github.com/d-kuro/gwq/internal/worktree"
+	"github.com/d-kuro/gwq/pkg/models"
 	"github.com/spf13/cobra"
 )
 
@@ -30,16 +30,16 @@ Use -g flag to always show all worktrees from the base directory.
 Use -v flag for detailed information including commit hashes and creation times.
 Use --json flag to output in JSON format for scripting.`,
 	Example: `  # Simple list
-  wtree list
+  gwq list
 
   # Detailed information
-  wtree list -v
+  gwq list -v
 
   # JSON format for scripting
-  wtree list --json
+  gwq list --json
 
   # Show all worktrees from base directory (from anywhere)
-  wtree list -g`,
+  gwq list -g`,
 	RunE: runList,
 }
 

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/d-kuro/wtree/pkg/models"
+	"github.com/d-kuro/gwq/pkg/models"
 )
 
 func TestNewPrinter(t *testing.T) {

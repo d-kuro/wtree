@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/d-kuro/wtree/internal/config"
-	"github.com/d-kuro/wtree/internal/discovery"
-	"github.com/d-kuro/wtree/internal/finder"
-	"github.com/d-kuro/wtree/internal/git"
-	"github.com/d-kuro/wtree/internal/ui"
-	"github.com/d-kuro/wtree/internal/worktree"
-	"github.com/d-kuro/wtree/pkg/models"
-	"github.com/d-kuro/wtree/pkg/utils"
+	"github.com/d-kuro/gwq/internal/config"
+	"github.com/d-kuro/gwq/internal/discovery"
+	"github.com/d-kuro/gwq/internal/finder"
+	"github.com/d-kuro/gwq/internal/git"
+	"github.com/d-kuro/gwq/internal/ui"
+	"github.com/d-kuro/gwq/internal/worktree"
+	"github.com/d-kuro/gwq/pkg/models"
+	"github.com/d-kuro/gwq/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -37,14 +37,14 @@ Use -g flag to always show all worktrees from the base directory.
 To use this command effectively, add this function to your shell configuration:
 
 For Bash/Zsh:
-  wtree() {
+  gwq() {
     case "$1" in
       cd)
         # Check if -h or --help is passed
         if [[ " ${@:2} " =~ " -h " ]] || [[ " ${@:2} " =~ " --help " ]]; then
-          command wtree "$@"
+          command gwq "$@"
         else
-          local dir=$(command wtree cd --print-path "${@:2}" 2>&1)
+          local dir=$(command gwq cd --print-path "${@:2}" 2>&1)
           # Check if the command succeeded
           if [ $? -eq 0 ] && [ -n "$dir" ]; then
             cd "$dir"
@@ -56,21 +56,21 @@ For Bash/Zsh:
         fi
         ;;
       *)
-        command wtree "$@"
+        command gwq "$@"
         ;;
     esac
   }`,
 	Example: `  # Select worktree using fuzzy finder
-  wtree cd
+  gwq cd
 
   # Pattern matching selection
-  wtree cd feature
+  gwq cd feature
 
   # Direct specification
-  wtree cd feature/new-ui
+  gwq cd feature/new-ui
 
   # Navigate to any worktree from base directory
-  wtree cd -g myapp:feature`,
+  gwq cd -g myapp:feature`,
 	RunE: runCd,
 	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if cdGlobal {

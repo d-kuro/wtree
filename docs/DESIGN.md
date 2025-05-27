@@ -1,8 +1,8 @@
-# wtree - Git Worktree Manager Design
+# gwq - Git Worktree Manager Design
 
 ## Overview
 
-`wtree` is a CLI tool for efficiently managing Git worktrees with global discovery capabilities. It follows the same organizational principles as `ghq` for repository cloning, providing a structured approach to worktree management across multiple repositories and hosting services.
+`gwq` is a CLI tool for efficiently managing Git worktrees with global discovery capabilities. It follows the same organizational principles as `ghq` for repository cloning, providing a structured approach to worktree management across multiple repositories and hosting services.
 
 ## Core Principles
 
@@ -62,7 +62,7 @@
 
 ### Core Commands
 
-#### `wtree add [options] <branch> [<path>]`
+#### `gwq add [options] <branch> [<path>]`
 
 Create new worktrees with automatic URL-based path generation
 
@@ -71,7 +71,7 @@ Create new worktrees with automatic URL-based path generation
 - Custom path specification when needed
 - Remote branch support
 
-#### `wtree list [options]`
+#### `gwq list [options]`
 
 Display worktrees with context-aware behavior
 
@@ -81,7 +81,7 @@ Display worktrees with context-aware behavior
 - **Output Formats**: Table (default), verbose (`-v`), JSON (`--json`)
 - Shows current worktree with bullet indicator
 
-#### `wtree cd [pattern]`
+#### `gwq cd [pattern]`
 
 Navigate to worktree directories with shell integration
 
@@ -90,7 +90,7 @@ Navigate to worktree directories with shell integration
 - Global mode for cross-repository navigation
 - Repository prefix support (e.g., `myapp:feature`)
 
-#### `wtree remove [pattern]`
+#### `gwq remove [pattern]`
 
 Delete worktrees with safety features and optional branch deletion
 
@@ -101,7 +101,7 @@ Delete worktrees with safety features and optional branch deletion
 - Safe deletion by default, force deletion with `--force-delete-branch`
 - Multiple selection support in interactive mode
 
-#### `wtree prune`
+#### `gwq prune`
 
 Clean up stale worktree information
 
@@ -109,15 +109,15 @@ Clean up stale worktree information
 - Handles manually deleted directories
 - No effect on properly removed worktrees
 
-#### `wtree config`
+#### `gwq config`
 
 Manage configuration settings
 
-- View current configuration (`wtree config list`)
-- Set configuration values (`wtree config set <key> <value>`)
+- View current configuration (`gwq config list`)
+- Set configuration values (`gwq config set <key> <value>`)
 - Hierarchical key support (e.g., `worktree.basedir`)
 
-#### `wtree version`
+#### `gwq version`
 
 Display version information
 
@@ -136,8 +136,8 @@ All primary commands support dual modes:
 ### Package Structure
 
 ```
-wtree/
-├── cmd/wtree/              # Main entry point
+gwq/
+├── cmd/gwq/              # Main entry point
 ├── internal/
 │   ├── cmd/               # Command implementations
 │   ├── config/           # Configuration management
@@ -192,10 +192,10 @@ wtree/
 
 Tab completion is supported for all major shells:
 
-- **Bash**: `source <(wtree completion bash)`
-- **Zsh**: `source <(wtree completion zsh)`
-- **Fish**: `wtree completion fish > ~/.config/fish/completions/wtree.fish`
-- **PowerShell**: `wtree completion powershell | Out-String | Invoke-Expression`
+- **Bash**: `source <(gwq completion bash)`
+- **Zsh**: `source <(gwq completion zsh)`
+- **Fish**: `gwq completion fish > ~/.config/fish/completions/gwq.fish`
+- **PowerShell**: `gwq completion powershell | Out-String | Invoke-Expression`
 
 Completion features:
 - Branch names for `add` and `remove` commands
@@ -243,14 +243,14 @@ Shell integration is necessary because CLI tools run in child processes and cann
 ### Implementation
 
 ```bash
-wtree() {
+gwq() {
   case "$1" in
     cd)
       # Check if -h or --help is passed
       if [[ " ${@:2} " =~ " -h " ]] || [[ " ${@:2} " =~ " --help " ]]; then
-        command wtree "$@"
+        command gwq "$@"
       else
-        local dir=$(command wtree cd --print-path "${@:2}" 2>&1)
+        local dir=$(command gwq cd --print-path "${@:2}" 2>&1)
         # Check if the command succeeded
         if [ $? -eq 0 ] && [ -n "$dir" ]; then
           cd "$dir"
@@ -262,7 +262,7 @@ wtree() {
       fi
       ;;
     *)
-      command wtree "$@"
+      command gwq "$@"
       ;;
   esac
 }
@@ -272,10 +272,10 @@ This approach is consistent with other popular tools like `z`, `fasd`, `autojump
 
 ### Enhanced Shell Integration for Command Chaining
 
-The standard shell function doesn't support command chaining (e.g., `wtree cd && claude`) because the directory change happens after the entire command line completes. To address this, we provide an enhanced helper function:
+The standard shell function doesn't support command chaining (e.g., `gwq cd && claude`) because the directory change happens after the entire command line completes. To address this, we provide an enhanced helper function:
 
 ```bash
-wtcd() {
+gwcd() {
   local pattern=""
   
   # If first argument doesn't start with -, treat it as pattern
@@ -287,12 +287,12 @@ wtcd() {
   # Get the directory path
   local dir
   if [ -n "$pattern" ]; then
-    dir=$(command wtree cd --print-path "$pattern" 2>&1)
+    dir=$(command gwq cd --print-path "$pattern" 2>&1)
   else
-    dir=$(command wtree cd --print-path 2>&1)
+    dir=$(command gwq cd --print-path 2>&1)
   fi
   
-  # Check if wtree cd succeeded
+  # Check if gwq cd succeeded
   if [ $? -eq 0 ] && [ -n "$dir" ]; then
     cd "$dir"
     # If additional arguments provided, execute them as a command

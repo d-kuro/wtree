@@ -1,4 +1,4 @@
-module github.com/d-kuro/wtree
+module github.com/d-kuro/gwq
 
 go 1.24
 

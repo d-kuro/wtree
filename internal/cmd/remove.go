@@ -5,13 +5,13 @@ import (
 	"os"
 	"strings"
 
-	"github.com/d-kuro/wtree/internal/config"
-	"github.com/d-kuro/wtree/internal/discovery"
-	"github.com/d-kuro/wtree/internal/finder"
-	"github.com/d-kuro/wtree/internal/git"
-	"github.com/d-kuro/wtree/internal/ui"
-	"github.com/d-kuro/wtree/internal/worktree"
-	"github.com/d-kuro/wtree/pkg/models"
+	"github.com/d-kuro/gwq/internal/config"
+	"github.com/d-kuro/gwq/internal/discovery"
+	"github.com/d-kuro/gwq/internal/finder"
+	"github.com/d-kuro/gwq/internal/git"
+	"github.com/d-kuro/gwq/internal/ui"
+	"github.com/d-kuro/gwq/internal/worktree"
+	"github.com/d-kuro/gwq/pkg/models"
 	"github.com/spf13/cobra"
 )
 
@@ -40,25 +40,25 @@ When run inside a git repository, shows worktrees for the current repository.
 When run outside a git repository, shows all worktrees from the configured base directory.
 Use -g flag to always show all worktrees from the base directory.`,
 	Example: `  # Select and delete using fuzzy finder
-  wtree remove
+  gwq remove
 
   # Delete by pattern matching
-  wtree remove feature/old
+  gwq remove feature/old
 
   # Force delete even if dirty
-  wtree remove -f feature/broken
+  gwq remove -f feature/broken
 
   # Delete worktree and branch
-  wtree remove -b feature/completed
+  gwq remove -b feature/completed
 
   # Force delete branch even if not merged
-  wtree remove -b --force-delete-branch feature/abandoned
+  gwq remove -b --force-delete-branch feature/abandoned
 
   # Show what would be deleted
-  wtree remove --dry-run feature/old
+  gwq remove --dry-run feature/old
 
   # Remove from all worktrees in base directory
-  wtree remove -g myapp:feature/old`,
+  gwq remove -g myapp:feature/old`,
 	RunE: runRemove,
 	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if removeGlobal {

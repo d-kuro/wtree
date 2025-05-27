@@ -1,4 +1,4 @@
-// Package models defines the core data structures used throughout the wtree application.
+// Package models defines the core data structures used throughout the gwq application.
 package models
 
 import "time"

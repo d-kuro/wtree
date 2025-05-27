@@ -1,4 +1,4 @@
-// Package cmd provides CLI commands for the wtree application.
+// Package cmd provides CLI commands for the gwq application.
 package cmd
 
 import (
@@ -6,7 +6,7 @@ import (
 	"os"
 	"runtime/debug"
 
-	"github.com/d-kuro/wtree/internal/config"
+	"github.com/d-kuro/gwq/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -18,11 +18,11 @@ var (
 
 // rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
-	Use:   "wtree",
+	Use:   "gwq",
 	Short: "Git worktree manager",
-	Long: `wtree is a CLI tool for efficiently managing Git worktrees.
+	Long: `gwq is a CLI tool for efficiently managing Git worktrees.
 
-Like how 'ghq' manages repository clones, wtree provides intuitive 
+Like how 'ghq' manages repository clones, gwq provides intuitive 
 operations for creating, switching, and deleting worktrees using 
 a fuzzy finder interface.`,
 	Version: getVersionString(),

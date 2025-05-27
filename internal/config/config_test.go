@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/d-kuro/wtree/pkg/models"
+	"github.com/d-kuro/gwq/pkg/models"
 	"github.com/spf13/viper"
 )
 
@@ -21,8 +21,8 @@ func TestGetConfigDir(t *testing.T) {
 		if !filepath.IsAbs(dir) {
 			t.Errorf("getConfigDir() should return absolute path, got %s", dir)
 		}
-		if filepath.Base(dir) != "wtree" {
-			t.Errorf("getConfigDir() should end with 'wtree', got %s", dir)
+		if filepath.Base(dir) != "gwq" {
+			t.Errorf("getConfigDir() should end with 'gwq', got %s", dir)
 		}
 	})
 	

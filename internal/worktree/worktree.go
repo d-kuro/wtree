@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/d-kuro/wtree/internal/url"
-	"github.com/d-kuro/wtree/pkg/models"
+	"github.com/d-kuro/gwq/internal/url"
+	"github.com/d-kuro/gwq/pkg/models"
 )
 
 // GitInterface defines the git operations used by Manager.

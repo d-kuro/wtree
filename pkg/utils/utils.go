@@ -1,4 +1,4 @@
-// Package utils provides generic utility functions for the wtree application.
+// Package utils provides generic utility functions for the gwq application.
 package utils
 
 import (

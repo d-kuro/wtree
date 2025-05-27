@@ -3,8 +3,8 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/d-kuro/wtree/internal/config"
-	"github.com/d-kuro/wtree/internal/ui"
+	"github.com/d-kuro/gwq/internal/config"
+	"github.com/d-kuro/gwq/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -12,7 +12,7 @@ import (
 var configCmd = &cobra.Command{
 	Use:   "config",
 	Short: "Configuration management",
-	Long:  `Manage wtree configuration settings.`,
+	Long:  `Manage gwq configuration settings.`,
 }
 
 // configListCmd represents the config list command.
@@ -21,7 +21,7 @@ var configListCmd = &cobra.Command{
 	Short: "Show configuration",
 	Long:  `Display all current configuration settings.`,
 	Example: `  # Show all configuration
-  wtree config list`,
+  gwq config list`,
 	RunE: runConfigList,
 }
 
@@ -33,13 +33,13 @@ var configSetCmd = &cobra.Command{
 
 Configuration keys follow a dot notation format (e.g., worktree.basedir).`,
 	Example: `  # Set worktree base directory
-  wtree config set worktree.basedir ~/worktrees
+  gwq config set worktree.basedir ~/worktrees
 
   # Set naming template
-  wtree config set naming.template "{{.Repository}}-{{.Branch}}"
+  gwq config set naming.template "{{.Repository}}-{{.Branch}}"
 
   # Enable/disable colored output
-  wtree config set ui.color true`,
+  gwq config set ui.color true`,
 	Args: cobra.ExactArgs(2),
 	RunE: runConfigSet,
 	ValidArgsFunction: getConfigKeyCompletions,
@@ -51,10 +51,10 @@ var configGetCmd = &cobra.Command{
 	Short: "Get configuration value",
 	Long:  `Get a specific configuration value.`,
 	Example: `  # Get worktree base directory
-  wtree config get worktree.basedir
+  gwq config get worktree.basedir
 
   # Get naming template
-  wtree config get naming.template`,
+  gwq config get naming.template`,
 	Args: cobra.ExactArgs(1),
 	RunE: runConfigGet,
 	ValidArgsFunction: getConfigKeyCompletions,

@@ -1,4 +1,4 @@
-// Package git provides Git operations for the wtree application.
+// Package git provides Git operations for the gwq application.
 package git
 
 import (
@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/d-kuro/wtree/pkg/models"
+	"github.com/d-kuro/gwq/pkg/models"
 )
 
 // Git provides Git command operations.

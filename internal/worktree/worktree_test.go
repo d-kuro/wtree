@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/d-kuro/wtree/pkg/models"
+	"github.com/d-kuro/gwq/pkg/models"
 )
 
 // mockGit is a mock implementation of git operations for testing

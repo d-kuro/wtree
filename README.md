@@ -1,10 +1,10 @@
-# wtree - Git Worktree Manager
+# gwq - Git Worktree Manager
 
-`wtree` is a CLI tool for efficiently managing Git worktrees. Like how `ghq` manages repository clones, `wtree` provides intuitive operations for creating, switching, and deleting worktrees using a fuzzy finder interface.
+`gwq` is a CLI tool for efficiently managing Git worktrees. Like how `ghq` manages repository clones, `gwq` provides intuitive operations for creating, switching, and deleting worktrees using a fuzzy finder interface.
 
 ![](./docs/assets/usage.gif)
 
-## Why wtree?
+## Why gwq?
 
 Git worktrees allow you to check out multiple branches from the same repository into separate directories. This is particularly powerful when:
 
@@ -15,13 +15,13 @@ Git worktrees allow you to check out multiple branches from the same repository 
 
 ### AI Coding Agent Workflows
 
-One of the most powerful applications of `wtree` is enabling parallel AI coding workflows. Instead of having a single AI agent work sequentially through tasks, you can leverage multiple worktrees to have multiple AI agents (like Claude Code) work on different parts of your project simultaneously:
+One of the most powerful applications of `gwq` is enabling parallel AI coding workflows. Instead of having a single AI agent work sequentially through tasks, you can leverage multiple worktrees to have multiple AI agents (like Claude Code) work on different parts of your project simultaneously:
 
 ```bash
 # Create worktrees for parallel development
-wtree add feature/authentication
-wtree add feature/data-visualization
-wtree add bugfix/login-issue
+gwq add feature/authentication
+gwq add feature/data-visualization
+gwq add bugfix/login-issue
 
 # Each AI agent can work in its own worktree
 cd ~/worktrees/myapp-feature-authentication && claude
@@ -40,30 +40,30 @@ Since each worktree has its own working directory with isolated files, AI agents
 
 ### Using Go
 ```bash
-go install github.com/d-kuro/wtree/cmd/wtree@latest
+go install github.com/d-kuro/gwq/cmd/gwq@latest
 ```
 
 ### From Source
 ```bash
-git clone https://github.com/d-kuro/wtree.git
-cd wtree
-go build -o wtree ./cmd/wtree
+git clone https://github.com/d-kuro/gwq.git
+cd gwq
+go build -o gwq ./cmd/gwq
 ```
 
 ## Quick Start
 
 ```bash
 # Create a new worktree with new branch
-wtree add -b feature/new-ui
+gwq add -b feature/new-ui
 
 # List all worktrees
-wtree list
+gwq list
 
 # Navigate to a worktree (requires shell integration)
-wtree cd
+gwq cd
 
 # Remove a worktree
-wtree remove feature/old-ui
+gwq remove feature/old-ui
 ```
 
 ## Features
@@ -80,9 +80,9 @@ wtree remove feature/old-ui
 
 ## Global Worktree Management
 
-`wtree` automatically discovers all worktrees in your configured base directory, allowing you to access them from anywhere on your system:
+`gwq` automatically discovers all worktrees in your configured base directory, allowing you to access them from anywhere on your system:
 
-- **Outside Git Repositories**: When you run `wtree list` or `wtree cd` outside a git repository, it automatically discovers and shows all worktrees in the configured base directory
+- **Outside Git Repositories**: When you run `gwq list` or `gwq cd` outside a git repository, it automatically discovers and shows all worktrees in the configured base directory
 - **Inside Git Repositories**: By default, shows only worktrees for the current repository. Use the `-g` flag to see all worktrees from the base directory
 - **Automatic Discovery**: All worktrees in the base directory are automatically discovered, including those created with native git commands
 - **No Registry Required**: Uses filesystem scanning instead of maintaining a separate registry file
@@ -96,34 +96,34 @@ This feature is particularly useful when:
 
 ## Commands
 
-### `wtree add`
+### `gwq add`
 
 Create a new worktree
 
 ```bash
 # Create worktree with new branch
-wtree add -b feature/new-ui
+gwq add -b feature/new-ui
 
 # Create from existing branch
-wtree add main  # Creates worktree from existing 'main' branch
+gwq add main  # Creates worktree from existing 'main' branch
 
 # Create at specific path with new branch
-wtree add -b feature/new-ui ~/projects/myapp-feature
+gwq add -b feature/new-ui ~/projects/myapp-feature
 
 # Create from remote branch
-wtree add -b feature/api-v2 origin/feature/api-v2
+gwq add -b feature/api-v2 origin/feature/api-v2
 
 # Interactive branch selection with fuzzy finder
-wtree add -i
+gwq add -i
 ```
 
-### `wtree list`
+### `gwq list`
 
 Display all worktrees
 
 ```bash
 # Simple list
-wtree list
+gwq list
 # Output:
 # BRANCH        PATH
 # ● main        ~/ghq/github.com/user/project
@@ -131,148 +131,148 @@ wtree list
 # bugfix/login  ~/worktrees/github.com/user/project/bugfix-login
 
 # Detailed information
-wtree list -v
+gwq list -v
 
 # JSON format for scripting
-wtree list --json
+gwq list --json
 
 # Show all worktrees from base directory (from anywhere)
-wtree list -g
+gwq list -g
 ```
 
-### `wtree cd`
+### `gwq cd`
 
 Navigate to worktree directory (requires shell integration)
 
 ```bash
 # Select worktree using fuzzy finder
-wtree cd
+gwq cd
 
 # Pattern matching
-wtree cd feature
+gwq cd feature
 
 # Direct specification
-wtree cd feature/new-ui
+gwq cd feature/new-ui
 
 # Navigate to any worktree from base directory (from anywhere)
-wtree cd -g myapp:feature
+gwq cd -g myapp:feature
 ```
 
-### `wtree remove`
+### `gwq remove`
 
 Delete worktree
 
 ```bash
 # Select and delete using fuzzy finder
-wtree remove
+gwq remove
 
 # Delete by pattern
-wtree remove feature/old
+gwq remove feature/old
 
 # Force delete
-wtree remove -f feature/broken
+gwq remove -f feature/broken
 
 # Delete worktree and branch together
-wtree remove -b feature/completed
+gwq remove -b feature/completed
 
 # Force delete branch even if not merged
-wtree remove -b --force-delete-branch feature/abandoned
+gwq remove -b --force-delete-branch feature/abandoned
 
 # Preview what would be deleted
-wtree remove --dry-run -b feature/old
+gwq remove --dry-run -b feature/old
 
 # Remove from any worktree in base directory (from anywhere)
-wtree remove -g myapp:feature/old
+gwq remove -g myapp:feature/old
 ```
 
 **Branch Deletion Options:**
-- By default, `wtree remove` only deletes the worktree directory, preserving the branch
+- By default, `gwq remove` only deletes the worktree directory, preserving the branch
 - Use `-b/--delete-branch` to also delete the branch after removing the worktree
 - The branch deletion uses safe mode (`git branch -d`) by default, which prevents deletion of unmerged branches
 - Use `--force-delete-branch` with `-b` to force delete even unmerged branches (`git branch -D`)
 
-### `wtree prune`
+### `gwq prune`
 
 Clean up deleted worktree information
 
 ```bash
-wtree prune
+gwq prune
 ```
 
-### `wtree config`
+### `gwq config`
 
 Manage configuration
 
 ```bash
 # Show configuration
-wtree config list
+gwq config list
 
 # Set worktree base directory
-wtree config set worktree.basedir ~/worktrees
+gwq config set worktree.basedir ~/worktrees
 
 # Set naming template
-wtree config set naming.template "{{.Repository}}-{{.Branch}}"
+gwq config set naming.template "{{.Repository}}-{{.Branch}}"
 ```
 
-### `wtree version`
+### `gwq version`
 
 Display version information
 
 ```bash
 # Show detailed version information
-wtree version
+gwq version
 
 # Show brief version
-wtree --version
+gwq --version
 ```
 
 ## Shell Integration
 
 ### Tab Completion
 
-`wtree` provides tab completion for all commands, making it easy to discover branches, worktrees, and configuration options.
+`gwq` provides tab completion for all commands, making it easy to discover branches, worktrees, and configuration options.
 
 #### Setup
 
 **Bash:**
 ```bash
 # Add to ~/.bashrc
-source <(wtree completion bash)
+source <(gwq completion bash)
 ```
 
 **Zsh:**
 ```bash
 # Add to ~/.zshrc
-source <(wtree completion zsh)
+source <(gwq completion zsh)
 ```
 
 **Fish:**
 ```bash
 # Save completion script
-wtree completion fish > ~/.config/fish/completions/wtree.fish
+gwq completion fish > ~/.config/fish/completions/gwq.fish
 ```
 
 **PowerShell:**
 ```powershell
 # Add to your PowerShell profile
-wtree completion powershell | Out-String | Invoke-Expression
+gwq completion powershell | Out-String | Invoke-Expression
 ```
 
 After setting up, you can use tab completion:
 ```bash
-wtree add <TAB>          # Shows available branches
-wtree cd <TAB>           # Shows available worktrees
-wtree remove <TAB>       # Shows branches and worktrees
-wtree config set <TAB>   # Shows configuration keys
+gwq add <TAB>          # Shows available branches
+gwq cd <TAB>           # Shows available worktrees
+gwq remove <TAB>       # Shows branches and worktrees
+gwq config set <TAB>   # Shows configuration keys
 ```
 
 ### Directory Navigation
 
-The `wtree cd` command requires shell integration to actually change directories. This is because CLI tools run in a subprocess and cannot directly change the parent shell's working directory.
+The `gwq cd` command requires shell integration to actually change directories. This is because CLI tools run in a subprocess and cannot directly change the parent shell's working directory.
 
 #### How it works
 
-1. `wtree cd` outputs the selected worktree path instead of trying to change directories
+1. `gwq cd` outputs the selected worktree path instead of trying to change directories
 2. A shell function captures this output and executes the actual `cd` command in your current shell
 
 #### Setup
@@ -280,14 +280,14 @@ The `wtree cd` command requires shell integration to actually change directories
 Add this to your `~/.bashrc` or `~/.zshrc`:
 
 ```bash
-wtree() {
+gwq() {
   case "$1" in
     cd)
       # Check if -h or --help is passed
       if [[ " ${@:2} " =~ " -h " ]] || [[ " ${@:2} " =~ " --help " ]]; then
-        command wtree "$@"
+        command gwq "$@"
       else
-        local dir=$(command wtree cd --print-path "${@:2}" 2>&1)
+        local dir=$(command gwq cd --print-path "${@:2}" 2>&1)
         # Check if the command succeeded
         if [ $? -eq 0 ] && [ -n "$dir" ]; then
           cd "$dir"
@@ -299,31 +299,31 @@ wtree() {
       fi
       ;;
     *)
-      command wtree "$@"
+      command gwq "$@"
       ;;
   esac
 }
 ```
 
-After adding this function and reloading your shell (`source ~/.bashrc` or `source ~/.zshrc`), you can use `wtree cd` to navigate to worktrees:
+After adding this function and reloading your shell (`source ~/.bashrc` or `source ~/.zshrc`), you can use `gwq cd` to navigate to worktrees:
 
 ```bash
 # Interactive selection with fuzzy finder
-wtree cd
+gwq cd
 
 # Direct navigation
-wtree cd feature/new-ui
+gwq cd feature/new-ui
 ```
 
 #### Enhanced Shell Integration for Command Chaining
 
-If you want to use `wtree cd` with command chaining (e.g., `wtree cd && claude`), the standard shell function won't work as expected because the directory change happens after the entire command line completes.
+If you want to use `gwq cd` with command chaining (e.g., `gwq cd && claude`), the standard shell function won't work as expected because the directory change happens after the entire command line completes.
 
 To solve this, add this helper function to your shell configuration:
 
 ```bash
 # Helper function to change to a worktree directory and run a command
-wtcd() {
+gwcd() {
   local pattern=""
 
   # If first argument doesn't start with -, treat it as pattern
@@ -335,12 +335,12 @@ wtcd() {
   # Get the directory path
   local dir
   if [ -n "$pattern" ]; then
-    dir=$(command wtree cd --print-path "$pattern" 2>&1)
+    dir=$(command gwq cd --print-path "$pattern" 2>&1)
   else
-    dir=$(command wtree cd --print-path 2>&1)
+    dir=$(command gwq cd --print-path 2>&1)
   fi
 
-  # Check if wtree cd succeeded
+  # Check if gwq cd succeeded
   if [ $? -eq 0 ] && [ -n "$dir" ]; then
     cd "$dir"
     # If additional arguments provided, execute them as a command
@@ -357,17 +357,17 @@ wtcd() {
 Usage examples:
 ```bash
 # Interactive selection, then run claude
-wtcd && claude
+gwcd && claude
 
 # Pattern match, then run claude
-wtcd feature && claude
+gwcd feature && claude
 
 # Direct command execution (recommended)
-wtcd feature claude
+gwcd feature claude
 
 # Works with any command
-wtcd api npm test
-wtcd auth git status
+gwcd api npm test
+gwcd auth git status
 ```
 
 <details>
@@ -375,7 +375,7 @@ wtcd auth git status
 
 Due to Unix/Linux process model constraints, command-line tools cannot directly change the parent shell's working directory:
 
-- When you run `wtree cd`, it creates a new process
+- When you run `gwq cd`, it creates a new process
 - Even if that process calls `chdir()`, it only affects its own process
 - When the process exits, the shell remains in the original directory
 
@@ -384,16 +384,16 @@ This is a security feature - child processes cannot modify parent process state.
 Alternative usage without shell integration:
 ```bash
 # Get path and cd manually
-cd $(wtree cd --print-path feature/new-ui)
+cd $(gwq cd --print-path feature/new-ui)
 
 # Start new shell in target directory
-wtree cd feature/new-ui && bash
+gwq cd feature/new-ui && bash
 ```
 </details>
 
 ## Configuration
 
-Configuration file location: `~/.config/wtree/config.toml`
+Configuration file location: `~/.config/gwq/config.toml`
 
 ```toml
 [worktree]
@@ -430,70 +430,70 @@ tilde_home = true
 
 ```bash
 # Create multiple worktrees for parallel development
-wtree add -b feature/auth
-wtree add -b feature/api
-wtree add -b bugfix/login
+gwq add -b feature/auth
+gwq add -b feature/api
+gwq add -b bugfix/login
 
 # Launch AI agents in parallel (example with Claude Code)
 # Without shell integration:
 # Terminal 1
-cd $(wtree cd --print-path auth) && claude
+cd $(gwq cd --print-path auth) && claude
 
 # Terminal 2
-cd $(wtree cd --print-path api) && claude
+cd $(gwq cd --print-path api) && claude
 
 # Terminal 3
-cd $(wtree cd --print-path login) && claude
+cd $(gwq cd --print-path login) && claude
 
 # With shell integration enabled (simpler):
 # Terminal 1
-wtree cd auth && claude
+gwq cd auth && claude
 
 # Terminal 2
-wtree cd api && claude
+gwq cd api && claude
 
 # Terminal 3
-wtree cd login && claude
+gwq cd login && claude
 ```
 
 ### Batch Operations
 
 ```bash
 # List all feature branches from global worktrees
-wtree list -g --json | jq '.[] | select(.branch | contains("feature"))'
+gwq list -g --json | jq '.[] | select(.branch | contains("feature"))'
 
 # Clean up old feature worktrees
-wtree list -g --json | \
+gwq list -g --json | \
   jq -r '.[] | select(.branch | contains("feature/old-")) | .branch' | \
-  xargs -I {} wtree remove -g {}
+  xargs -I {} gwq remove -g {}
 ```
 
 ### Integration with Git Workflows
 
 ```bash
 # Create worktree for PR review
-wtree add -b pr-123-review origin/pull/123/head
+gwq add -b pr-123-review origin/pull/123/head
 
 # Create worktree for hotfix
-wtree add -b hotfix/critical-bug origin/main
+gwq add -b hotfix/critical-bug origin/main
 
 # Switch between worktrees quickly
-wtree cd  # Use fuzzy finder to select
+gwq cd  # Use fuzzy finder to select
 ```
 
 ### Version Information
 
 ```bash
 # Show version information
-wtree version
+gwq version
 
 # Show brief version
-wtree --version
+gwq --version
 ```
 
 ## Directory Structure
 
-`wtree` organizes worktrees using a URL-based hierarchy similar to `ghq`, ensuring no naming conflicts:
+`gwq` organizes worktrees using a URL-based hierarchy similar to `ghq`, ensuring no naming conflicts:
 
 ```
 ~/worktrees/

@@ -3,11 +3,11 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/d-kuro/wtree/internal/config"
-	"github.com/d-kuro/wtree/internal/finder"
-	"github.com/d-kuro/wtree/internal/git"
-	"github.com/d-kuro/wtree/internal/ui"
-	"github.com/d-kuro/wtree/internal/worktree"
+	"github.com/d-kuro/gwq/internal/config"
+	"github.com/d-kuro/gwq/internal/finder"
+	"github.com/d-kuro/gwq/internal/git"
+	"github.com/d-kuro/gwq/internal/ui"
+	"github.com/d-kuro/gwq/internal/worktree"
 	"github.com/spf13/cobra"
 )
 
@@ -26,16 +26,16 @@ var addCmd = &cobra.Command{
 If no path is provided, it will be generated based on the configuration template.
 Use -i flag to interactively select a branch using fuzzy finder.`,
 	Example: `  # Create worktree from existing branch
-  wtree add feature/new-ui
+  gwq add feature/new-ui
 
   # Create at specific path
-  wtree add feature/new-ui ~/projects/myapp-feature
+  gwq add feature/new-ui ~/projects/myapp-feature
 
   # Create new branch and worktree
-  wtree add -b feature/api-v2
+  gwq add -b feature/api-v2
 
   # Interactive branch selection
-  wtree add -i`,
+  gwq add -i`,
 	RunE: runAdd,
 	ValidArgsFunction: getBranchCompletions,
 }

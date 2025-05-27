@@ -25,7 +25,7 @@ func showVersion() {
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
 		// Fallback to compile-time variables
-		fmt.Printf("wtree version %s\n", version)
+		fmt.Printf("gwq version %s\n", version)
 		fmt.Printf("  commit: %s\n", commit)
 		fmt.Printf("  built: %s\n", date)
 		fmt.Printf("  go: %s\n", runtime.Version())
@@ -34,7 +34,7 @@ func showVersion() {
 	}
 
 	// Use build info from runtime
-	fmt.Printf("wtree version %s\n", getVersion(info))
+	fmt.Printf("gwq version %s\n", getVersion(info))
 	
 	// Show VCS information if available
 	vcsRevision := ""

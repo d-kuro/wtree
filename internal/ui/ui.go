@@ -1,4 +1,4 @@
-// Package ui provides user interface utilities for the wtree application.
+// Package ui provides user interface utilities for the gwq application.
 package ui
 
 import (
@@ -8,8 +8,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/d-kuro/wtree/pkg/models"
-	"github.com/d-kuro/wtree/pkg/utils"
+	"github.com/d-kuro/gwq/pkg/models"
+	"github.com/d-kuro/gwq/pkg/utils"
 )
 
 // Printer handles output formatting.

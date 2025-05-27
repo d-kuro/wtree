@@ -1,13 +1,13 @@
-// Package finder provides fuzzy finder integration for the wtree application.
+// Package finder provides fuzzy finder integration for the gwq application.
 package finder
 
 import (
 	"fmt"
 	"strings"
 
-	"github.com/d-kuro/wtree/internal/git"
-	"github.com/d-kuro/wtree/pkg/models"
-	"github.com/d-kuro/wtree/pkg/utils"
+	"github.com/d-kuro/gwq/internal/git"
+	"github.com/d-kuro/gwq/pkg/models"
+	"github.com/d-kuro/gwq/pkg/utils"
 	"github.com/ktr0731/go-fuzzyfinder"
 )
 
