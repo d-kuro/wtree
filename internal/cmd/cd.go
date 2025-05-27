@@ -109,9 +109,24 @@ func runCd(cmd *cobra.Command, args []string) error {
 	var path string
 
 	if len(args) > 0 {
-		path, err = wm.GetWorktreePath(args[0])
+		// Get all matching worktrees
+		matches, err := wm.GetMatchingWorktrees(args[0])
 		if err != nil {
 			return err
+		}
+		
+		if len(matches) == 0 {
+			return fmt.Errorf("no worktree found matching pattern: %s", args[0])
+		} else if len(matches) == 1 {
+			path = matches[0].Path
+		} else {
+			// Multiple matches - use fuzzy finder
+			f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
+			selected, err := f.SelectWorktree(matches)
+			if err != nil {
+				return fmt.Errorf("worktree selection cancelled")
+			}
+			path = selected.Path
 		}
 	} else {
 		worktrees, err := wm.List()

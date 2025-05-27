@@ -273,6 +273,84 @@ func TestManagerGetWorktreePath(t *testing.T) {
 	}
 }
 
+func TestManagerGetMatchingWorktrees(t *testing.T) {
+	mockG := &mockGit{
+		worktrees: []models.Worktree{
+			{Path: "/path/to/feature-test", Branch: "feature/test"},
+			{Path: "/path/to/main", Branch: "main"},
+			{Path: "/path/to/bugfix", Branch: "bugfix/issue-123"},
+			{Path: "/path/to/feature-auth", Branch: "feature/auth"},
+			{Path: "/path/to/feature-api", Branch: "feature/api"},
+		},
+	}
+	
+	m := New(mockG, &models.Config{})
+	
+	tests := []struct {
+		name         string
+		pattern      string
+		wantCount    int
+		wantBranches []string
+	}{
+		{
+			name:      "MatchMultiple",
+			pattern:   "feature",
+			wantCount: 3,
+			wantBranches: []string{"feature/test", "feature/auth", "feature/api"},
+		},
+		{
+			name:      "MatchSingle",
+			pattern:   "main",
+			wantCount: 1,
+			wantBranches: []string{"main"},
+		},
+		{
+			name:      "MatchPath",
+			pattern:   "bugfix",
+			wantCount: 1,
+			wantBranches: []string{"bugfix/issue-123"},
+		},
+		{
+			name:      "NoMatch",
+			pattern:   "nonexistent",
+			wantCount: 0,
+			wantBranches: []string{},
+		},
+		{
+			name:      "CaseInsensitive",
+			pattern:   "FEATURE",
+			wantCount: 3,
+			wantBranches: []string{"feature/test", "feature/auth", "feature/api"},
+		},
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			matches, err := m.GetMatchingWorktrees(tt.pattern)
+			if err != nil {
+				t.Errorf("GetMatchingWorktrees() unexpected error = %v", err)
+				return
+			}
+			
+			if len(matches) != tt.wantCount {
+				t.Errorf("GetMatchingWorktrees() returned %d matches, want %d", len(matches), tt.wantCount)
+			}
+			
+			// Check that all expected branches are found
+			foundBranches := make(map[string]bool)
+			for _, wt := range matches {
+				foundBranches[wt.Branch] = true
+			}
+			
+			for _, expectedBranch := range tt.wantBranches {
+				if !foundBranches[expectedBranch] {
+					t.Errorf("Expected branch %s not found in matches", expectedBranch)
+				}
+			}
+		})
+	}
+}
+
 func TestManagerValidateWorktreePath(t *testing.T) {
 	tests := []struct {
 		name      string

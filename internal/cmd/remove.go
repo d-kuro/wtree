@@ -109,15 +109,32 @@ func runRemove(cmd *cobra.Command, args []string) error {
 	var toRemove []models.Worktree
 
 	if len(args) > 0 {
-		pattern := strings.ToLower(args[0])
-		for _, wt := range nonMainWorktrees {
-			if strings.Contains(strings.ToLower(wt.Branch), pattern) ||
-				strings.Contains(strings.ToLower(wt.Path), pattern) {
-				toRemove = append(toRemove, wt)
+		// Get all matching worktrees
+		matches, err := wm.GetMatchingWorktrees(args[0])
+		if err != nil {
+			return err
+		}
+		
+		// Filter out main worktrees
+		var nonMainMatches []models.Worktree
+		for _, wt := range matches {
+			if !wt.IsMain {
+				nonMainMatches = append(nonMainMatches, wt)
 			}
 		}
-		if len(toRemove) == 0 {
+		
+		if len(nonMainMatches) == 0 {
 			return fmt.Errorf("no worktree found matching pattern: %s", args[0])
+		} else if len(nonMainMatches) == 1 {
+			toRemove = nonMainMatches
+		} else {
+			// Multiple matches - use fuzzy finder
+			f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
+			selected, err := f.SelectMultipleWorktrees(nonMainMatches)
+			if err != nil {
+				return fmt.Errorf("worktree selection cancelled")
+			}
+			toRemove = selected
 		}
 	} else {
 		f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
@@ -198,6 +215,7 @@ func removeGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []string
 	if len(args) > 0 {
 		// Pattern matching
 		pattern := strings.ToLower(args[0])
+		var matches []*discovery.GlobalWorktreeEntry
 		
 		for _, entry := range nonMainEntries {
 			branchLower := strings.ToLower(entry.Branch)
@@ -211,12 +229,41 @@ func removeGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []string
 			   strings.Contains(strings.ToLower(entry.Path), pattern) ||
 			   strings.Contains(repoName, pattern) ||
 			   strings.Contains(repoName+":"+branchLower, pattern) {
-				toRemove = append(toRemove, entry)
+				matches = append(matches, entry)
 			}
 		}
 
-		if len(toRemove) == 0 {
+		if len(matches) == 0 {
 			return fmt.Errorf("no worktree matches pattern: %s", args[0])
+		} else if len(matches) == 1 {
+			toRemove = matches
+		} else {
+			// Multiple matches - use fuzzy finder
+			worktrees := discovery.ConvertToWorktreeModels(matches, true)
+
+			// Create a temporary git instance for finder
+			g, _ := git.NewFromCwd()
+			if g == nil {
+				g = &git.Git{}
+			}
+			
+			f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
+			selected, err := f.SelectMultipleWorktrees(worktrees)
+			if err != nil {
+				return fmt.Errorf("worktree selection cancelled")
+			}
+
+			// Map selected worktrees back to entries
+			selectedPaths := make(map[string]bool)
+			for _, wt := range selected {
+				selectedPaths[wt.Path] = true
+			}
+
+			for _, entry := range matches {
+				if selectedPaths[entry.Path] {
+					toRemove = append(toRemove, entry)
+				}
+			}
 		}
 	} else {
 		// No pattern - show all in fuzzy finder

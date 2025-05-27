@@ -121,6 +121,25 @@ func (m *Manager) GetWorktreePath(pattern string) (string, error) {
 	return "", fmt.Errorf("no worktree found matching pattern: %s", pattern)
 }
 
+// GetMatchingWorktrees returns all worktrees matching the given pattern.
+func (m *Manager) GetMatchingWorktrees(pattern string) ([]models.Worktree, error) {
+	worktrees, err := m.List()
+	if err != nil {
+		return nil, err
+	}
+
+	var matches []models.Worktree
+	pattern = strings.ToLower(pattern)
+	for _, wt := range worktrees {
+		if strings.Contains(strings.ToLower(wt.Branch), pattern) ||
+			strings.Contains(strings.ToLower(wt.Path), pattern) {
+			matches = append(matches, wt)
+		}
+	}
+
+	return matches, nil
+}
+
 // ValidateWorktreePath checks if a path can be used for a new worktree.
 func (m *Manager) ValidateWorktreePath(path string) error {
 	info, err := os.Stat(path)
