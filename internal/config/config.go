@@ -18,12 +18,12 @@ const (
 
 // getConfigDir returns the configuration directory path.
 func getConfigDir() string {
-	configDir, err := os.UserConfigDir()
+	home, err := os.UserHomeDir()
 	if err != nil {
-		home, _ := os.UserHomeDir()
-		return filepath.Join(home, ".config", "wtree")
+		// Fallback to current directory if home is not available
+		return filepath.Join(".", ".config", "wtree")
 	}
-	return filepath.Join(configDir, "wtree")
+	return filepath.Join(home, ".config", "wtree")
 }
 
 // Init initializes the configuration system, creating default config if needed.

@@ -105,10 +105,16 @@ func getConfigKeyCompletions(_ *cobra.Command, args []string, toComplete string)
 		name string
 		desc string
 	}{
-		{"config.worktree.baseDir", "Base directory for worktrees"},
-		{"config.worktree.nameFormat", "Worktree naming format"},
-		{"config.discovery.enable", "Enable repository discovery"},
-		{"config.discovery.paths", "Paths to search for repositories"},
+		{"worktree.basedir", "Base directory for worktrees"},
+		{"worktree.auto_mkdir", "Automatically create directories"},
+		{"finder.preview", "Enable preview window"},
+		{"finder.preview_size", "Preview window size"},
+		{"finder.keybind_select", "Key binding for selection"},
+		{"finder.keybind_cancel", "Key binding for cancellation"},
+		{"naming.template", "Directory name template"},
+		{"ui.color", "Enable colored output"},
+		{"ui.icons", "Enable icon display"},
+		{"ui.tilde_home", "Display home directory as ~"},
 	}
 
 	var completions []string
