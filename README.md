@@ -169,9 +169,24 @@ wtree remove feature/old
 # Force delete
 wtree remove -f feature/broken
 
+# Delete worktree and branch together
+wtree remove -b feature/completed
+
+# Force delete branch even if not merged
+wtree remove -b --force-delete-branch feature/abandoned
+
+# Preview what would be deleted
+wtree remove --dry-run -b feature/old
+
 # Remove from any worktree in base directory (from anywhere)
 wtree remove -g myapp:feature/old
 ```
+
+**Branch Deletion Options:**
+- By default, `wtree remove` only deletes the worktree directory, preserving the branch
+- Use `-b/--delete-branch` to also delete the branch after removing the worktree
+- The branch deletion uses safe mode (`git branch -d`) by default, which prevents deletion of unmerged branches
+- Use `--force-delete-branch` with `-b` to force delete even unmerged branches (`git branch -D`)
 
 ### `wtree prune`
 

@@ -16,6 +16,7 @@ type GitInterface interface {
 	ListWorktrees() ([]models.Worktree, error)
 	AddWorktree(path, branch string, createBranch bool) error
 	RemoveWorktree(path string, force bool) error
+	DeleteBranch(branch string, force bool) error
 	PruneWorktrees() error
 	GetRepositoryName() (string, error)
 	GetRecentCommits(path string, limit int) ([]models.CommitInfo, error)
@@ -72,6 +73,24 @@ func (m *Manager) Add(branch string, customPath string, createBranch bool) error
 // Remove deletes a worktree.
 func (m *Manager) Remove(path string, force bool) error {
 	return m.git.RemoveWorktree(path, force)
+}
+
+// RemoveWithBranch deletes a worktree and optionally its branch.
+func (m *Manager) RemoveWithBranch(path string, branch string, forceWorktree bool, deleteBranch bool, forceBranch bool) error {
+	// First remove the worktree
+	if err := m.git.RemoveWorktree(path, forceWorktree); err != nil {
+		return err
+	}
+
+	// Then delete the branch if requested
+	if deleteBranch && branch != "" {
+		if err := m.git.DeleteBranch(branch, forceBranch); err != nil {
+			// Return error but worktree is already removed
+			return fmt.Errorf("worktree removed but failed to delete branch: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // List returns all worktrees.

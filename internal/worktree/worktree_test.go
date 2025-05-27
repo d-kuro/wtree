@@ -17,6 +17,7 @@ type mockGit struct {
 	removeError    error
 	listError      error
 	pruneError     error
+	deleteBranchError error
 	recentCommits  []models.CommitInfo
 }
 
@@ -69,6 +70,13 @@ func (m *mockGit) GetRecentCommits(path string, limit int) ([]models.CommitInfo,
 
 func (m *mockGit) GetRepositoryURL() (string, error) {
 	return "https://github.com/test-user/test-repo.git", nil
+}
+
+func (m *mockGit) DeleteBranch(branch string, force bool) error {
+	if m.deleteBranchError != nil {
+		return m.deleteBranchError
+	}
+	return nil
 }
 
 func TestManagerAdd(t *testing.T) {

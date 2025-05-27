@@ -131,6 +131,23 @@ func (g *Git) RemoveWorktree(path string, force bool) error {
 	return nil
 }
 
+// DeleteBranch deletes a branch.
+func (g *Git) DeleteBranch(branch string, force bool) error {
+	args := []string{"branch"}
+	if force {
+		args = append(args, "-D")
+	} else {
+		args = append(args, "-d")
+	}
+	args = append(args, branch)
+
+	if _, err := g.run(args...); err != nil {
+		return fmt.Errorf("failed to delete branch %s: %w", branch, err)
+	}
+
+	return nil
+}
+
 // PruneWorktrees removes worktree information for deleted directories.
 func (g *Git) PruneWorktrees() error {
 	if _, err := g.run("worktree", "prune"); err != nil {

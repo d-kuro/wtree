@@ -16,9 +16,11 @@ import (
 )
 
 var (
-	removeForce  bool
-	removeDryRun bool
-	removeGlobal bool
+	removeForce         bool
+	removeDryRun        bool
+	removeGlobal        bool
+	deleteBranch        bool
+	forceDeleteBranch   bool
 )
 
 // removeCmd represents the remove command.
@@ -31,6 +33,9 @@ var removeCmd = &cobra.Command{
 If no pattern is provided, shows a fuzzy finder to select the worktree.
 The pattern can match against branch name or path.
 
+By default, only the worktree directory is removed and the branch is preserved.
+Use -b flag to also delete the branch after removing the worktree.
+
 When run inside a git repository, shows worktrees for the current repository.
 When run outside a git repository, shows all worktrees from the configured base directory.
 Use -g flag to always show all worktrees from the base directory.`,
@@ -42,6 +47,12 @@ Use -g flag to always show all worktrees from the base directory.`,
 
   # Force delete even if dirty
   wtree remove -f feature/broken
+
+  # Delete worktree and branch
+  wtree remove -b feature/completed
+
+  # Force delete branch even if not merged
+  wtree remove -b --force-delete-branch feature/abandoned
 
   # Show what would be deleted
   wtree remove --dry-run feature/old
@@ -63,6 +74,8 @@ func init() {
 	removeCmd.Flags().BoolVarP(&removeForce, "force", "f", false, "Force delete even if dirty")
 	removeCmd.Flags().BoolVarP(&removeDryRun, "dry-run", "d", false, "Show deletion targets only")
 	removeCmd.Flags().BoolVarP(&removeGlobal, "global", "g", false, "Remove from any worktree in the configured base directory")
+	removeCmd.Flags().BoolVarP(&deleteBranch, "delete-branch", "b", false, "Also delete the branch after removing worktree")
+	removeCmd.Flags().BoolVar(&forceDeleteBranch, "force-delete-branch", false, "Force delete the branch even if not merged")
 }
 
 func runRemove(cmd *cobra.Command, args []string) error {
@@ -119,16 +132,30 @@ func runRemove(cmd *cobra.Command, args []string) error {
 		fmt.Println("Would remove the following worktrees:")
 		for _, wt := range toRemove {
 			fmt.Printf("  %s (%s)\n", wt.Branch, wt.Path)
+			if deleteBranch {
+				fmt.Printf("    - Would delete branch: %s\n", wt.Branch)
+			}
 		}
 		return nil
 	}
 
 	for _, wt := range toRemove {
-		if err := wm.Remove(wt.Path, removeForce); err != nil {
-			printer.PrintError(fmt.Errorf("failed to remove %s: %v", wt.Branch, err))
-			continue
+		if deleteBranch {
+			if err := wm.RemoveWithBranch(wt.Path, wt.Branch, removeForce, deleteBranch, forceDeleteBranch); err != nil {
+				printer.PrintError(fmt.Errorf("failed to remove %s: %v", wt.Branch, err))
+				continue
+			}
+			printer.PrintSuccess(fmt.Sprintf("Removed worktree: %s", wt.Branch))
+			if wt.Branch != "" {
+				printer.PrintSuccess(fmt.Sprintf("Deleted branch: %s", wt.Branch))
+			}
+		} else {
+			if err := wm.Remove(wt.Path, removeForce); err != nil {
+				printer.PrintError(fmt.Errorf("failed to remove %s: %v", wt.Branch, err))
+				continue
+			}
+			printer.PrintSuccess(fmt.Sprintf("Removed worktree: %s", wt.Branch))
 		}
-		printer.PrintSuccess(fmt.Sprintf("Removed worktree: %s", wt.Branch))
 	}
 
 	return nil
@@ -228,6 +255,9 @@ func removeGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []string
 				repoName = entry.RepositoryInfo.Repository
 			}
 			fmt.Printf("  %s:%s (%s)\n", repoName, entry.Branch, entry.Path)
+			if deleteBranch {
+				fmt.Printf("    - Would delete branch: %s\n", entry.Branch)
+			}
 		}
 		return nil
 	}
@@ -260,14 +290,26 @@ func removeGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []string
 		g := git.New(repoPath)
 		wm := worktree.New(g, cfg)
 
-		if err := wm.Remove(entry.Path, removeForce); err != nil {
-			repoName := "unknown"
-			if entry.RepositoryInfo != nil {
-				repoName = entry.RepositoryInfo.Repository
+		if deleteBranch {
+			if err := wm.RemoveWithBranch(entry.Path, entry.Branch, removeForce, deleteBranch, forceDeleteBranch); err != nil {
+				repoName := "unknown"
+				if entry.RepositoryInfo != nil {
+					repoName = entry.RepositoryInfo.Repository
+				}
+				printer.PrintError(fmt.Errorf("failed to remove %s:%s: %v", repoName, entry.Branch, err))
+				_ = os.Chdir(originalDir)
+				continue
 			}
-			printer.PrintError(fmt.Errorf("failed to remove %s:%s: %v", repoName, entry.Branch, err))
-			_ = os.Chdir(originalDir)
-			continue
+		} else {
+			if err := wm.Remove(entry.Path, removeForce); err != nil {
+				repoName := "unknown"
+				if entry.RepositoryInfo != nil {
+					repoName = entry.RepositoryInfo.Repository
+				}
+				printer.PrintError(fmt.Errorf("failed to remove %s:%s: %v", repoName, entry.Branch, err))
+				_ = os.Chdir(originalDir)
+				continue
+			}
 		}
 
 		repoName := "unknown"
@@ -275,6 +317,9 @@ func removeGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []string
 			repoName = entry.RepositoryInfo.Repository
 		}
 		printer.PrintSuccess(fmt.Sprintf("Removed worktree: %s:%s", repoName, entry.Branch))
+		if deleteBranch && entry.Branch != "" {
+			printer.PrintSuccess(fmt.Sprintf("Deleted branch: %s", entry.Branch))
+		}
 		
 		// Change back to original directory
 		_ = os.Chdir(originalDir)
