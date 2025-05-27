@@ -88,11 +88,13 @@ Navigate to worktree directories with shell integration
 
 #### `wtree remove [pattern]`
 
-Delete worktrees with safety features
+Delete worktrees with safety features and optional branch deletion
 
 - Interactive selection and confirmation
 - Pattern matching for batch operations
 - Dry-run mode for safety
+- Optional branch deletion with `-b/--delete-branch`
+- Safe deletion by default, force deletion with `--force-delete-branch`
 
 ### Global Operation Modes
 
@@ -267,6 +269,22 @@ The shell function includes proper error handling to ensure:
 - Maintains local repository focus when working within one
 - Easy access to global operations when needed
 - Consistent with user expectations
+
+### Branch Deletion in Remove Command
+
+**Decision**: Branch deletion is opt-in, not default
+**Rationale**:
+
+- **Data Safety**: Branches contain commit history that may not be merged
+- **Git Philosophy**: Worktrees and branches are independent concepts
+- **Backward Compatibility**: Preserves expected behavior for existing users
+- **Flexibility**: Same branch can have multiple worktrees
+
+**Implementation**:
+- `-b/--delete-branch`: Enables branch deletion after worktree removal
+- Uses safe deletion (`git branch -d`) by default
+- `--force-delete-branch`: Force deletion (`git branch -D`) for unmerged branches
+- Clear success messages for both worktree and branch operations
 
 ## Future Considerations
 

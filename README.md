@@ -73,6 +73,7 @@ wtree remove feature/old-ui
 - **Configuration Management**: Customize worktree directories and naming conventions
 - **Preview Support**: See branch details and recent commits before selection
 - **Clean Operations**: Automatic cleanup of deleted worktree information
+- **Branch Management**: Optional branch deletion when removing worktrees
 - **Home Directory Display**: Option to display paths with `~` instead of full home directory path
 
 ## Global Worktree Management
