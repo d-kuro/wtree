@@ -49,13 +49,9 @@ If no pattern is provided, all worktrees will be shown in the fuzzy finder.`,
 	RunE: runExec,
 	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		// Disable file completion after --
-		for i, arg := range args {
+		for _, arg := range args {
 			if arg == "--" {
 				return nil, cobra.ShellCompDirectiveNoFileComp
-			}
-			if i == 0 && !strings.HasPrefix(arg, "-") {
-				// First non-flag argument is the pattern
-				continue
 			}
 		}
 		

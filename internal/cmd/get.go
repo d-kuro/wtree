@@ -118,9 +118,9 @@ func runGet(cmd *cobra.Command, args []string) error {
 
 	// Output the path
 	if getNullTerminate {
-		fmt.Fprintf(os.Stdout, "%s\x00", path)
+		_, _ = fmt.Fprintf(os.Stdout, "%s\x00", path)
 	} else {
-		fmt.Fprintln(os.Stdout, path)
+		_, _ = fmt.Fprintln(os.Stdout, path)
 	}
 
 	return nil
@@ -193,9 +193,9 @@ func getGlobalWorktreePath(cfg *models.Config, args []string) error {
 
 	// Output the path
 	if getNullTerminate {
-		fmt.Fprintf(os.Stdout, "%s\x00", selected.Path)
+		_, _ = fmt.Fprintf(os.Stdout, "%s\x00", selected.Path)
 	} else {
-		fmt.Fprintln(os.Stdout, selected.Path)
+		_, _ = fmt.Fprintln(os.Stdout, selected.Path)
 	}
 
 	return nil
