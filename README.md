@@ -2,6 +2,8 @@
 
 `wtree` is a CLI tool for efficiently managing Git worktrees. Like how `ghq` manages repository clones, `wtree` provides intuitive operations for creating, switching, and deleting worktrees using a fuzzy finder interface.
 
+![](./docs/assets/usage.gif)
+
 ## Why wtree?
 
 Git worktrees allow you to check out multiple branches from the same repository into separate directories. This is particularly powerful when:
@@ -315,7 +317,7 @@ wtree cd feature/new-ui
 
 #### Enhanced Shell Integration for Command Chaining
 
-If you want to use `wtree cd` with command chaining (e.g., `wtree cd && claude`), the standard shell function won't work as expected because the directory change happens after the entire command line completes. 
+If you want to use `wtree cd` with command chaining (e.g., `wtree cd && claude`), the standard shell function won't work as expected because the directory change happens after the entire command line completes.
 
 To solve this, add this helper function to your shell configuration:
 
@@ -323,13 +325,13 @@ To solve this, add this helper function to your shell configuration:
 # Helper function to change to a worktree directory and run a command
 wtcd() {
   local pattern=""
-  
+
   # If first argument doesn't start with -, treat it as pattern
   if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
     pattern="$1"
     shift
   fi
-  
+
   # Get the directory path
   local dir
   if [ -n "$pattern" ]; then
@@ -337,7 +339,7 @@ wtcd() {
   else
     dir=$(command wtree cd --print-path 2>&1)
   fi
-  
+
   # Check if wtree cd succeeded
   if [ $? -eq 0 ] && [ -n "$dir" ]; then
     cd "$dir"
