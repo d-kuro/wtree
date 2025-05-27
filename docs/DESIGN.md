@@ -89,6 +89,27 @@ Navigate to worktree directories with shell integration
 - Pattern matching for quick navigation
 - Global mode for cross-repository navigation
 - Repository prefix support (e.g., `myapp:feature`)
+- Shows setup instructions when shell function not configured
+
+#### `gwq get [pattern]`
+
+Retrieve worktree path for shell substitution
+
+- Alternative to `gwq cd` without shell integration requirement
+- Pattern matching with fuzzy finder for multiple matches
+- Null-terminated output option (`-0`) for xargs compatibility
+- Global mode support for cross-repository operations
+- Suitable for scripting and command composition
+
+#### `gwq exec [pattern] -- command [args...]`
+
+Execute commands in worktree directory without changing current directory
+
+- Runs commands in subshell with worktree as working directory
+- Pattern matching with fuzzy finder for worktree selection
+- `--stay` option to remain in worktree after command execution
+- Global mode support for cross-repository operations
+- Eliminates need for shell integration for temporary operations
 
 #### `gwq remove [pattern]`
 
@@ -238,7 +259,20 @@ tilde_home = true  # Display ~ instead of full home path
 
 ### Technical Requirement
 
-Shell integration is necessary because CLI tools run in child processes and cannot directly change the parent shell's working directory due to Unix process isolation.
+Shell integration is necessary for `gwq cd` because CLI tools run in child processes and cannot directly change the parent shell's working directory due to Unix process isolation.
+
+### Alternatives Without Shell Integration
+
+1. **`gwq get`**: Returns worktree path for command substitution
+   ```bash
+   cd $(gwq get feature)
+   ```
+
+2. **`gwq exec`**: Executes commands in worktree directory
+   ```bash
+   gwq exec feature -- npm test
+   gwq exec --stay feature -- bash  # Opens shell in worktree
+   ```
 
 ### Implementation
 
@@ -266,6 +300,28 @@ gwq() {
       ;;
   esac
 }
+```
+
+Fish shell implementation:
+```fish
+function gwq
+  if test "$argv[1]" = "cd"
+    # Check if -h or --help is passed
+    if contains -- -h $argv[2..-1]; or contains -- --help $argv[2..-1]
+      command gwq $argv
+    else
+      set -l dir (command gwq cd --print-path $argv[2..-1] 2>&1)
+      if test $status -eq 0; and test -n "$dir"
+        cd $dir
+      else
+        echo "$dir" >&2
+        return 1
+      end
+    end
+  else
+    command gwq $argv
+  end
+end
 ```
 
 This approach is consistent with other popular tools like `z`, `fasd`, `autojump`, and `fzf`.
@@ -381,6 +437,22 @@ The shell functions include proper error handling to ensure:
 - Uses safe deletion (`git branch -d`) by default
 - `--force-delete-branch`: Force deletion (`git branch -D`) for unmerged branches
 - Clear success messages for both worktree and branch operations
+
+### Shell Integration Alternatives
+
+**Decision**: Provide multiple methods for worktree navigation
+**Rationale**:
+
+- **Reduced Friction**: Not all users want to configure shell functions
+- **Flexibility**: Different workflows require different approaches
+- **Compatibility**: Some environments may restrict shell modifications
+- **Progressive Enhancement**: Users can adopt shell integration when ready
+
+**Implementation**:
+- `gwq cd`: Traditional approach with shell function requirement
+- `gwq get`: Simple path retrieval for command substitution
+- `gwq exec`: Direct command execution without directory change
+- Clear setup instructions when shell function not configured
 
 ## Future Considerations
 

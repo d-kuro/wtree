@@ -158,6 +158,48 @@ gwq cd feature/new-ui
 gwq cd -g myapp:feature
 ```
 
+### `gwq get`
+
+Get worktree path (alternative to `gwq cd` without shell function)
+
+```bash
+# Get path and change directory
+cd $(gwq get feature)
+
+# Get path for specific worktree
+gwq get main
+
+# Use with other commands
+ls -la $(gwq get feature)
+
+# Use null-terminated output with xargs
+gwq get -0 feature | xargs -0 -I {} echo "Path: {}"
+
+# Get path from global worktrees
+gwq get -g myapp:feature
+```
+
+### `gwq exec`
+
+Execute command in worktree directory
+
+```bash
+# Run tests in feature branch
+gwq exec feature -- npm test
+
+# Pull latest changes in main branch
+gwq exec main -- git pull
+
+# Run multiple commands
+gwq exec feature -- sh -c "git pull && npm install && npm test"
+
+# Stay in worktree directory after command
+gwq exec --stay feature -- npm install
+
+# Execute in global worktree
+gwq exec -g myapp:feature -- make build
+```
+
 ### `gwq remove`
 
 Delete worktree
@@ -270,6 +312,11 @@ gwq config set <TAB>   # Shows configuration keys
 
 The `gwq cd` command requires shell integration to actually change directories. This is because CLI tools run in a subprocess and cannot directly change the parent shell's working directory.
 
+**Alternatives without shell integration:**
+- Use `gwq get` to retrieve paths: `cd $(gwq get feature)`
+- Use `gwq exec` to run commands in worktrees: `gwq exec feature -- npm test`
+- Use `gwq exec --stay` to open a shell in worktree: `gwq exec --stay feature -- bash`
+
 #### How it works
 
 1. `gwq cd` outputs the selected worktree path instead of trying to change directories
@@ -313,6 +360,29 @@ gwq cd
 
 # Direct navigation
 gwq cd feature/new-ui
+```
+
+For Fish shell, add this to your `~/.config/fish/config.fish`:
+
+```fish
+function gwq
+  if test "$argv[1]" = "cd"
+    # Check if -h or --help is passed
+    if contains -- -h $argv[2..-1]; or contains -- --help $argv[2..-1]
+      command gwq $argv
+    else
+      set -l dir (command gwq cd --print-path $argv[2..-1] 2>&1)
+      if test $status -eq 0; and test -n "$dir"
+        cd $dir
+      else
+        echo "$dir" >&2
+        return 1
+      end
+    end
+  else
+    command gwq $argv
+  end
+end
 ```
 
 #### Enhanced Shell Integration for Command Chaining
@@ -383,11 +453,17 @@ This is a security feature - child processes cannot modify parent process state.
 
 Alternative usage without shell integration:
 ```bash
-# Get path and cd manually
-cd $(gwq cd --print-path feature/new-ui)
+# Method 1: Use gwq get
+cd $(gwq get feature/new-ui)
 
-# Start new shell in target directory
-gwq cd feature/new-ui && bash
+# Method 2: Use gwq exec to run commands
+gwq exec feature/new-ui -- npm test
+
+# Method 3: Use gwq exec --stay to open shell
+gwq exec --stay feature/new-ui -- bash
+
+# Method 4: Get path manually (legacy)
+cd $(gwq cd --print-path feature/new-ui)
 ```
 </details>
 
@@ -435,17 +511,27 @@ gwq add -b feature/api
 gwq add -b bugfix/login
 
 # Launch AI agents in parallel (example with Claude Code)
-# Without shell integration:
+# Method 1: Using gwq get
 # Terminal 1
-cd $(gwq cd --print-path auth) && claude
+cd $(gwq get auth) && claude
 
 # Terminal 2
-cd $(gwq cd --print-path api) && claude
+cd $(gwq get api) && claude
 
 # Terminal 3
-cd $(gwq cd --print-path login) && claude
+cd $(gwq get login) && claude
 
-# With shell integration enabled (simpler):
+# Method 2: Using gwq exec --stay
+# Terminal 1
+gwq exec --stay auth -- claude
+
+# Terminal 2
+gwq exec --stay api -- claude
+
+# Terminal 3
+gwq exec --stay login -- claude
+
+# Method 3: With shell integration enabled
 # Terminal 1
 gwq cd auth && claude
 
