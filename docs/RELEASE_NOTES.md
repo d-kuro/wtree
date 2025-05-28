@@ -1,0 +1,57 @@
+# gwq v0.0.1 Release Notes
+
+🎉 **Initial Release**
+
+We're excited to announce the first release of gwq - a CLI tool for efficient Git worktree management with global discovery capabilities.
+
+> ⚠️ **Experimental Release**: This is an early experimental version. Breaking changes may occur in future releases as we refine the API and features based on user feedback.
+
+## 🌟 Features
+
+### Core Functionality
+- **Global Worktree Discovery**: Automatically find and manage worktrees across all repositories in your configured base directory
+- **URL-Based Organization**: Prevent naming conflicts using repository URL hierarchy (e.g., `~/worktrees/github.com/user/repo/branch`)
+- **Fuzzy Finder Interface**: Interactive selection with pattern matching, preview support, and multiple selection capabilities
+- **AI-Powered Workflows**: Enable parallel development with multiple AI coding agents working on different features simultaneously
+
+### Commands
+- `gwq add` - Create new worktrees with automatic path generation
+- `gwq list` - Display all worktrees with context-aware behavior
+- `gwq get` - Retrieve worktree path for shell substitution
+- `gwq exec` - Execute commands in worktree directory
+- `gwq remove` - Delete worktrees with optional branch deletion
+- `gwq prune` - Clean up stale worktree information
+- `gwq config` - Manage configuration settings
+- `gwq completion` - Generate shell completions
+- `gwq version` - Display version information
+
+### Shell Integration
+- Full tab completion support for Bash, Zsh, Fish, and PowerShell
+- Quick navigation with `cd $(gwq get <worktree>)`
+- Execute commands without changing directory using `gwq exec`
+
+### Configuration
+Customize behavior through `~/.config/gwq/config.toml`:
+- Base directory for worktrees
+- Fuzzy finder preview settings
+- UI preferences (colors, icons, display options)
+
+## 📋 Requirements
+- Git 2.5 or higher
+- Go 1.24+ (for building from source)
+
+## 📦 Installation
+
+```bash
+go install github.com/d-kuro/gwq/cmd/gwq@v0.0.1
+```
+
+## 🤝 Contributing
+As this is an experimental release, we welcome feedback, bug reports, and feature requests! Please open issues on our [GitHub repository](https://github.com/d-kuro/gwq).
+
+## ⚠️ Note
+This is an experimental v0.0.1 release. The API and behavior may change significantly in future versions as we iterate based on user feedback and requirements. Please be prepared for potential breaking changes in subsequent releases.
+
+---
+
+For detailed documentation and usage examples, visit our [GitHub repository](https://github.com/d-kuro/gwq).
