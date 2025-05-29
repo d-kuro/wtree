@@ -71,6 +71,15 @@ func normalizeURL(repoURL string) string {
 			path := parts[1]
 			repoURL = fmt.Sprintf("https://%s/%s", host, path)
 		}
+	} else if strings.HasPrefix(repoURL, "ssh://git@") {
+		// ssh://git@github.com:user/repo.git -> https://github.com/user/repo.git
+		repoURL = strings.TrimPrefix(repoURL, "ssh://")
+		parts := strings.SplitN(repoURL, ":", 2)
+		if len(parts) == 2 {
+			host := strings.TrimPrefix(parts[0], "git@")
+			path := parts[1]
+			repoURL = fmt.Sprintf("https://%s/%s", host, path)
+		}
 	}
 
 	// Ensure https:// prefix
