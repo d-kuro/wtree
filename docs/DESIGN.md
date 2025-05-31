@@ -175,8 +175,14 @@ gwq/
 
 #### URL Parser (`internal/url/`)
 
-- Parses various git URL formats (SSH, HTTPS, etc.)
+- Parses various git URL formats:
+  - HTTPS: `https://github.com/user/repo.git`
+  - HTTP: `http://github.com/user/repo.git`
+  - SSH: `git@github.com:user/repo.git`
+  - SSH with protocol prefix: `ssh://git@github.com:user/repo.git`
+  - Plain URL: `github.com/user/repo.git` (auto-prefixed with https://)
 - Extracts host, owner, and repository information
+- Normalizes all URL formats to a standard format for consistent parsing
 - Generates hierarchical paths for worktree placement
 - Handles branch name sanitization for filesystem compatibility
 

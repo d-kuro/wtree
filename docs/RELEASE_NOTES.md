@@ -1,3 +1,17 @@
+# gwq Release Notes
+
+## v0.0.2 (2025-05-31)
+
+### 🐛 Bug Fixes
+- Fixed URL normalization for ssh:// prefixed Git URLs (#6 by @osamu2001)
+
+### 👥 New Contributors
+- @osamu2001 made their first contribution in #6
+
+**Full Changelog**: [v0.0.1...v0.0.2](https://github.com/d-kuro/gwq/compare/v0.0.1...v0.0.2)
+
+---
+
 # gwq v0.0.1 Release Notes
 
 🎉 **Initial Release**
