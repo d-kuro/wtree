@@ -29,12 +29,13 @@ cd ~/worktrees/myapp-feature-data-visualization && claude
 cd ~/worktrees/myapp-bugfix-login-issue && claude
 ```
 
-Since each worktree has its own working directory with isolated files, AI agents can work at full speed without waiting for each other's changes or dealing with merge conflicts. This approach is ideal for:
+Since each worktree has its own working directory with isolated files, AI agents can work at full speed without waiting for each other's changes or dealing with merge conflicts. You can monitor all agent activity in real-time with `gwq status --watch`. This approach is ideal for:
 
 - **Independent tasks**: Each AI agent focuses on a separate feature or component
 - **Parallel migrations**: Multiple agents can migrate different parts of your codebase simultaneously
 - **Code review workflows**: One agent writes code while another reviews it in a separate worktree
 - **Testing isolation**: Run tests in one worktree while developing in another
+- **Progress monitoring**: Track which agents have made changes and when using the status dashboard
 
 ## Installation
 
@@ -59,6 +60,9 @@ gwq add -b feature/new-ui
 # List all worktrees
 gwq list
 
+# Check status of all worktrees
+gwq status
+
 # Get worktree path
 gwq get
 
@@ -77,6 +81,7 @@ gwq remove feature/old-ui
 - **Clean Operations**: Automatic cleanup of deleted worktree information
 - **Branch Management**: Optional branch deletion when removing worktrees
 - **Home Directory Display**: Option to display paths with `~` instead of full home directory path
+- **Worktree Status Dashboard**: Monitor all worktrees' git status, changes, and activity at a glance
 
 ## Global Worktree Management
 
@@ -222,6 +227,49 @@ gwq remove -g myapp:feature/old
 - The branch deletion uses safe mode (`git branch -d`) by default, which prevents deletion of unmerged branches
 - Use `--force-delete-branch` with `-b` to force delete even unmerged branches (`git branch -D`)
 
+### `gwq status`
+
+Monitor the status of all worktrees
+
+```bash
+# Show status in table format
+gwq status
+# Output:
+# BRANCH          STATUS       CHANGES                   ACTIVITY
+# ● main          changed      8 modified, 8 untracked   just now
+#   feature/api   up to date   -                         2 hours ago
+#   bugfix/login  changed      3 added, 2 modified       30 mins ago
+
+# Watch mode - auto-refresh every 5 seconds
+gwq status --watch
+
+# JSON output for scripting
+gwq status --json
+
+# Show additional information (ahead/behind, processes)
+gwq status --verbose
+
+# Filter by status
+gwq status --filter changed
+gwq status --filter "up to date"
+
+# Sort by different fields
+gwq status --sort activity
+gwq status --sort modified
+
+# CSV output for data analysis
+gwq status --csv
+
+# Show status for all worktrees in base directory
+gwq status --global
+```
+
+This command is particularly useful for:
+- **Multi-AI Agent Monitoring**: See which worktrees have active changes from different AI agents
+- **Quick Overview**: Instantly understand the state of all your development branches
+- **Cleanup Identification**: Find inactive or stale worktrees that can be removed
+- **Integration**: Use JSON/CSV output for integration with other tools
+
 ### `gwq prune`
 
 Clean up deleted worktree information
@@ -323,8 +371,6 @@ template = "{{.Host}}/{{.Owner}}/{{.Repository}}/{{.Branch}}"
 sanitize_chars = { "/" = "-", ":" = "-" }
 
 [ui]
-# Color output
-color = true
 # Icon display
 icons = true
 # Display home directory as ~ in paths
@@ -371,6 +417,9 @@ cd $(gwq get api) && claude
 
 # Terminal 3
 cd $(gwq get login) && claude
+
+# Monitor all AI agent activity
+gwq status --watch  # Shows real-time status of all worktrees
 ```
 
 ### Batch Operations
@@ -383,6 +432,12 @@ gwq list -g --json | jq '.[] | select(.branch | contains("feature"))'
 gwq list -g --json | \
   jq -r '.[] | select(.branch | contains("feature/old-")) | .branch' | \
   xargs -I {} gwq remove -g {}
+
+# Find worktrees with uncommitted changes
+gwq status --json | jq '.worktrees[] | select(.status == "changed") | {branch, changes: .git_status}'
+
+# Export worktree status to CSV for reporting
+gwq status --csv > worktree-status-$(date +%Y%m%d).csv
 ```
 
 ### Integration with Git Workflows

@@ -14,15 +14,18 @@ import (
 
 // Printer handles output formatting.
 type Printer struct {
-	useColor     bool
 	useIcons     bool
 	useTildeHome bool
+}
+
+// UseIcons returns whether icon display is enabled.
+func (p *Printer) UseIcons() bool {
+	return p.useIcons
 }
 
 // New creates a new Printer instance.
 func New(config *models.UIConfig) *Printer {
 	return &Printer{
-		useColor:     config.Color,
 		useIcons:     config.Icons,
 		useTildeHome: config.TildeHome,
 	}
@@ -35,7 +38,7 @@ func (p *Printer) PrintWorktrees(worktrees []models.Worktree, verbose bool) {
 		return
 	}
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
 	defer func() { _ = w.Flush() }()
 
 	if verbose {
@@ -60,15 +63,19 @@ func (p *Printer) PrintWorktrees(worktrees []models.Worktree, verbose bool) {
 	} else {
 		_, _ = fmt.Fprintln(w, "BRANCH\tPATH")
 		for _, wt := range worktrees {
-			marker := ""
+			// Apply marker with consistent spacing
+			var branchWithMarker string
 			if wt.IsMain && p.useIcons {
-				marker = "● "
+				branchWithMarker = "● " + wt.Branch
+			} else {
+				branchWithMarker = "  " + wt.Branch  // Two spaces to match "● " width
 			}
+			
 			path := wt.Path
 			if p.useTildeHome {
 				path = utils.TildePath(path)
 			}
-			_, _ = fmt.Fprintf(w, "%s%s\t%s\n", marker, wt.Branch, path)
+			_, _ = fmt.Fprintf(w, "%s\t%s\n", branchWithMarker, path)
 		}
 	}
 }
@@ -87,7 +94,7 @@ func (p *Printer) PrintBranches(branches []models.Branch) {
 		return
 	}
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
 	defer func() { _ = w.Flush() }()
 
 	_, _ = fmt.Fprintln(w, "BRANCH\tLAST COMMIT\tAUTHOR\tDATE")
@@ -193,3 +200,4 @@ func (p *Printer) printConfigRecursive(prefix string, data any) {
 		fmt.Printf("%s = %v\n", prefix, v)
 	}
 }
+

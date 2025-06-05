@@ -198,7 +198,7 @@ gwq/
 - TOML-based configuration with sensible defaults
 - Template-based path generation (maintained for backward compatibility)
 - UI and finder customization options
-- Supports color, icons, and tilde home display preferences
+- Supports icons and tilde home display preferences
 
 #### Completion System (`internal/cmd/completion.go`)
 
@@ -242,7 +242,6 @@ template = "{{.Host}}/{{.Owner}}/{{.Repository}}/{{.Branch}}"
 sanitize_chars = { "/" = "-", ":" = "-" }
 
 [ui]
-color = true
 icons = true
 tilde_home = true  # Display ~ instead of full home path
 ```

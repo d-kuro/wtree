@@ -19,24 +19,20 @@ func TestNewPrinter(t *testing.T) {
 		want   *Printer
 	}{
 		{
-			name: "WithColorAndIcons",
+			name: "WithIcons",
 			config: &models.UIConfig{
-				Color: true,
 				Icons: true,
 			},
 			want: &Printer{
-				useColor: true,
 				useIcons: true,
 			},
 		},
 		{
-			name: "WithoutColorAndIcons",
+			name: "WithoutIcons",
 			config: &models.UIConfig{
-				Color: false,
 				Icons: false,
 			},
 			want: &Printer{
-				useColor: false,
 				useIcons: false,
 			},
 		},
@@ -45,9 +41,6 @@ func TestNewPrinter(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := New(tt.config)
-			if p.useColor != tt.want.useColor {
-				t.Errorf("useColor = %v, want %v", p.useColor, tt.want.useColor)
-			}
 			if p.useIcons != tt.want.useIcons {
 				t.Errorf("useIcons = %v, want %v", p.useIcons, tt.want.useIcons)
 			}

@@ -305,6 +305,11 @@ func (g *Git) RunCommand(args ...string) (string, error) {
 	return g.run(args...)
 }
 
+// Run is an alias for RunCommand for compatibility.
+func (g *Git) Run(args ...string) (string, error) {
+	return g.run(args...)
+}
+
 // run executes a git command.
 func (g *Git) run(args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
