@@ -68,9 +68,6 @@ func TestInit(t *testing.T) {
 	if viper.GetString("naming.template") != "{{.Host}}/{{.Owner}}/{{.Repository}}/{{.Branch}}" {
 		t.Errorf("Default naming.template not set correctly")
 	}
-	if !viper.GetBool("ui.color") {
-		t.Errorf("Default ui.color should be true")
-	}
 	if !viper.GetBool("ui.icons") {
 		t.Errorf("Default ui.icons should be true")
 	}
@@ -95,7 +92,6 @@ func TestLoad(t *testing.T) {
 	viper.Set("finder.keybind_cancel", "ctrl-c")
 	viper.Set("naming.template", "{{.Branch}}")
 	viper.Set("naming.sanitize_chars", map[string]string{"/": "_"})
-	viper.Set("ui.color", false)
 	viper.Set("ui.icons", false)
 
 	cfg, err := Load()
@@ -121,9 +117,6 @@ func TestLoad(t *testing.T) {
 	}
 	if cfg.Naming.Template != "{{.Branch}}" {
 		t.Errorf("NamingConfig.Template = %s, want {{.Branch}}", cfg.Naming.Template)
-	}
-	if cfg.UI.Color {
-		t.Errorf("UIConfig.Color = %v, want false", cfg.UI.Color)
 	}
 	if cfg.UI.Icons {
 		t.Errorf("UIConfig.Icons = %v, want false", cfg.UI.Icons)
@@ -273,7 +266,6 @@ func TestConfigStructureIntegrity(t *testing.T) {
 			SanitizeChars: map[string]string{"/": "-", ":": "-"},
 		},
 		UI: models.UIConfig{
-			Color: true,
 			Icons: false,
 		},
 	}
@@ -288,7 +280,6 @@ func TestConfigStructureIntegrity(t *testing.T) {
 	viper.Set("finder.keybind_cancel", cfg.Finder.KeybindCancel)
 	viper.Set("naming.template", cfg.Naming.Template)
 	viper.Set("naming.sanitize_chars", cfg.Naming.SanitizeChars)
-	viper.Set("ui.color", cfg.UI.Color)
 	viper.Set("ui.icons", cfg.UI.Icons)
 
 	// Load and verify
@@ -318,9 +309,6 @@ func TestConfigStructureIntegrity(t *testing.T) {
 	}
 	if loaded.Naming.Template != cfg.Naming.Template {
 		t.Errorf("Naming.Template mismatch")
-	}
-	if loaded.UI.Color != cfg.UI.Color {
-		t.Errorf("UI.Color mismatch")
 	}
 	if loaded.UI.Icons != cfg.UI.Icons {
 		t.Errorf("UI.Icons mismatch")

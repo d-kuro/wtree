@@ -58,7 +58,48 @@ type NamingConfig struct {
 
 // UIConfig contains UI-related configuration options.
 type UIConfig struct {
-	Color     bool `mapstructure:"color"`      // Enable colored output
 	Icons     bool `mapstructure:"icons"`      // Enable icon display
 	TildeHome bool `mapstructure:"tilde_home"` // Display home directory as ~
+}
+
+// WorktreeStatus represents the current status of a worktree.
+type WorktreeStatus struct {
+	Path           string           `json:"path"`             // Absolute path to the worktree
+	Branch         string           `json:"branch"`           // Branch name
+	Repository     string           `json:"repository"`       // Repository identifier
+	Status         WorktreeState    `json:"status"`           // Current status (clean, modified, etc.)
+	GitStatus      GitStatus        `json:"git_status"`       // Detailed git status
+	LastActivity   time.Time        `json:"last_activity"`    // Last modification time
+	ActiveProcess  []ProcessInfo    `json:"active_processes"` // Running processes
+	IsCurrent      bool             `json:"is_current"`       // Whether this is the current worktree
+}
+
+// WorktreeState represents the overall state of a worktree.
+type WorktreeState string
+
+const (
+	WorktreeStatusClean    WorktreeState = "clean"
+	WorktreeStatusModified WorktreeState = "modified"
+	WorktreeStatusStaged   WorktreeState = "staged"
+	WorktreeStatusConflict WorktreeState = "conflict"
+	WorktreeStatusStale    WorktreeState = "stale"
+)
+
+// GitStatus contains detailed git status information.
+type GitStatus struct {
+	Modified  int `json:"modified"`  // Number of modified files
+	Added     int `json:"added"`     // Number of added files
+	Deleted   int `json:"deleted"`   // Number of deleted files
+	Untracked int `json:"untracked"` // Number of untracked files
+	Staged    int `json:"staged"`    // Number of staged files
+	Ahead     int `json:"ahead"`     // Number of commits ahead of remote
+	Behind    int `json:"behind"`    // Number of commits behind remote
+	Conflicts int `json:"conflicts"` // Number of files with conflicts
+}
+
+// ProcessInfo represents information about a running process.
+type ProcessInfo struct {
+	PID     int    `json:"pid"`     // Process ID
+	Command string `json:"command"` // Command name
+	Type    string `json:"type"`    // Process type (e.g., "ai_agent")
 }
