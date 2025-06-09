@@ -69,7 +69,7 @@ type Task struct {
     ID           string            `json:"id"`
     Name         string            `json:"name"`
     Branch       string            `json:"branch"`              // Target branch for worktree
-    Priority     Priority          `json:"priority"`
+    Priority     Priority          `json:"priority"`            // 1-100, higher = more important
     Status       Status            `json:"status"`
     CreatedAt    time.Time         `json:"created_at"`
     StartedAt    *time.Time        `json:"started_at,omitempty"`
@@ -82,6 +82,11 @@ type Task struct {
     
     SessionID    string            `json:"session_id,omitempty"`
     AgentType    string            `json:"agent_type"`
+    
+    // Task dependencies
+    DependsOn        []string          `json:"depends_on"`             // Task IDs this task depends on
+    Blocks           []string          `json:"blocks,omitempty"`       // Task IDs blocked by this task (auto-populated)
+    DependencyPolicy DependencyPolicy  `json:"dependency_policy"`      // How to handle dependency failures
     
     // Enhanced task definition based on Claude Code best practices
     Context              string            `json:"context"`                // Background and problem description
@@ -99,6 +104,14 @@ type Task struct {
     ReviewResult *ReviewResult     `json:"review_result,omitempty"`
 }
 
+type DependencyPolicy string
+
+const (
+    DependencyPolicyWait DependencyPolicy = "wait"  // Wait for dependencies to complete (default)
+    DependencyPolicySkip DependencyPolicy = "skip"  // Skip this task if dependency fails
+    DependencyPolicyFail DependencyPolicy = "fail"  // Fail this task if dependency fails
+)
+
 type TaskConfig struct {
     SkipPermissions bool          `json:"skip_permissions"`
     Timeout         string        `json:"timeout"`
@@ -108,13 +121,20 @@ type TaskConfig struct {
     BackupFiles     bool          `json:"backup_files"`
 }
 
+// Numeric priority system (0-100, higher numbers = higher priority)
 type Priority int
+
 const (
-    PriorityLow    Priority = 0
-    PriorityNormal Priority = 1
-    PriorityHigh   Priority = 2
-    PriorityUrgent Priority = 3
+    PriorityVeryLow  Priority = 10   // Background tasks
+    PriorityLow      Priority = 25   // Nice-to-have features
+    PriorityNormal   Priority = 50   // Standard development tasks
+    PriorityHigh     Priority = 75   // Important features
+    PriorityUrgent   Priority = 90   // Critical fixes
+    PriorityCritical Priority = 100  // Blocking issues
 )
+
+// Custom priorities can use any value 1-100
+// Examples: 65 (above normal), 42 (below normal), 88 (very urgent)
 
 type Status string
 const (
@@ -126,10 +146,12 @@ const (
 )
 
 type TaskResult struct {
-    ExitCode     int              `json:"exit_code"`
-    Duration     time.Duration    `json:"duration"`
-    FilesChanged []string         `json:"files_changed"`
-    CommitHash   string           `json:"commit_hash,omitempty"`
+    ExitCode           int              `json:"exit_code"`
+    Duration           time.Duration    `json:"duration"`
+    FilesChanged       []string         `json:"files_changed"`
+    CommitHash         string           `json:"commit_hash,omitempty"`
+    DependenciesWaitTime time.Duration  `json:"dependencies_wait_time"`  // Time spent waiting for dependencies
+    DependencyFailures []string         `json:"dependency_failures"`     // Failed dependencies that affected this task
 }
 
 type ReviewResult struct {
@@ -145,25 +167,26 @@ type ReviewResult struct {
 
 #### `gwq claude task`
 
-Task management functionality (following existing patterns):
+Task management functionality with dependencies (following existing patterns):
 
 ```bash
 # Add tasks (executed from repository root)
-gwq claude task add -b feature/auth "Authentication system implementation"
+gwq claude task add -b feature/auth "Authentication system implementation" -p 75
   # → Creates worktree at .worktrees/feature-auth-<task-id>
-gwq claude task add -b feature/api "REST API implementation" -p high
-  # → Creates worktree at .worktrees/feature-api-<task-id>
+gwq claude task add -b feature/api "REST API implementation" -p 85 --depends-on auth-system
+  # → Creates worktree at .worktrees/feature-api-<task-id>, waits for auth-system
 gwq claude task add -f tasks.yaml  # Batch registration from YAML
-  # → Creates worktrees for each task
+  # → Creates worktrees for each task with dependency resolution
 
 # Task list (status command pattern)
 gwq claude task list
 
 # Output:
-# TASK          BRANCH        WORKTREE                    STATUS      PRIORITY   DURATION
-# ● auth-impl   feature/auth  .worktrees/feature-auth-abc running     normal     45m
-#   api-dev     feature/api   .worktrees/feature-api-def  pending     high       -
-#   bug-fix     bugfix/login  .worktrees/bugfix-login-ghi completed   urgent     2h 15m
+# TASK          BRANCH        WORKTREE                    STATUS      PRIORITY   DEPS     DURATION
+# ● auth-impl   feature/auth  .worktrees/feature-auth-abc running     75         -        45m
+#   api-dev     feature/api   .worktrees/feature-api-def  waiting     85         auth     -
+#   bug-fix     bugfix/login  .worktrees/bugfix-login-ghi completed   90         -        2h 15m
+#   setup-db    feature/db    .worktrees/feature-db-123   completed   80         -        1h 30m
 
 # Detailed information
 gwq claude task list --verbose
@@ -172,7 +195,10 @@ gwq claude task list --csv
 
 # Filter and sort
 gwq claude task list --filter running
-gwq claude task list --sort priority --reverse
+gwq claude task list --filter waiting          # Tasks waiting for dependencies
+gwq claude task list --sort priority --reverse  # Highest priority first
+gwq claude task list --priority-min 75          # Only high priority tasks
+gwq claude task list --has-dependencies         # Tasks with dependencies
 
 # Real-time monitoring
 gwq claude task list --watch
@@ -181,6 +207,12 @@ gwq claude task list --watch
 gwq claude task show auth-impl
 gwq claude task show auth  # Pattern matching
 gwq claude task show       # Fuzzy finder
+
+# Dependency management
+gwq claude task deps auth-impl           # Show dependencies for task
+gwq claude task deps --graph             # Visualize dependency graph
+gwq claude task deps --blocked           # Show blocked tasks
+gwq claude task deps --ready             # Show tasks ready to run
 ```
 
 #### `gwq claude worker`
@@ -268,13 +300,16 @@ gwq claude start -b feature/bugfix \
   --constraint "Don't modify public APIs"
   # → Creates .worktrees/feature-bugfix-<id>/ and runs Claude there
 
-# Start with existing worktree
+# Start with existing worktree and dependencies
 gwq claude start -b feature/auth \
   --context "$(cat docs/auth-spec.md)" \
   --objective "Complete JWT authentication" \
   --verify "make test" \
-  --verify "make security-scan"
+  --verify "make security-scan" \
+  --depends-on setup-database,user-model \
+  --priority 80
   # → Uses existing .worktrees/feature-auth-*/ or creates new one
+  # → Waits for dependencies before starting
 
 # List running Claude instances (shows worktree paths)
 gwq claude list
@@ -291,6 +326,136 @@ gwq claude stop --all
 # Cleanup specific worktree
 gwq claude cleanup auth-impl
   # → Removes .worktrees/feature-auth-abc/
+```
+
+## Task Dependency System
+
+### Dependency Resolution Algorithm
+
+```go
+type DependencyGraph struct {
+    tasks map[string]*Task
+    edges map[string][]string  // task_id -> dependencies
+}
+
+func (dg *DependencyGraph) GetExecutableTask(availableWorkers int) (*Task, error) {
+    // Find tasks that are ready to run (no pending dependencies)
+    readyTasks := dg.getReadyTasks()
+    
+    if len(readyTasks) == 0 {
+        return nil, ErrNoExecutableTasks
+    }
+    
+    // Sort by priority (highest first), then by creation time (oldest first)
+    sort.Slice(readyTasks, func(i, j int) bool {
+        if readyTasks[i].Priority == readyTasks[j].Priority {
+            return readyTasks[i].CreatedAt.Before(readyTasks[j].CreatedAt)
+        }
+        return readyTasks[i].Priority > readyTasks[j].Priority
+    })
+    
+    return readyTasks[0], nil
+}
+
+func (dg *DependencyGraph) getReadyTasks() []*Task {
+    var ready []*Task
+    
+    for _, task := range dg.tasks {
+        if task.Status != StatusPending {
+            continue
+        }
+        
+        // Check if all dependencies are completed
+        if dg.areDependenciesCompleted(task) {
+            ready = append(ready, task)
+        }
+    }
+    
+    return ready
+}
+
+func (dg *DependencyGraph) areDependenciesCompleted(task *Task) bool {
+    for _, depID := range task.DependsOn {
+        depTask, exists := dg.tasks[depID]
+        if !exists {
+            // Dependency task not found - treat as failed dependency
+            return false
+        }
+        
+        switch depTask.Status {
+        case StatusCompleted:
+            continue // OK
+        case StatusFailed:
+            // Handle based on dependency policy
+            switch task.DependencyPolicy {
+            case DependencyPolicyFail:
+                task.Status = StatusFailed
+                return false
+            case DependencyPolicySkip:
+                task.Status = StatusSkipped
+                return false
+            case DependencyPolicyWait:
+                return false // Keep waiting
+            }
+        default:
+            return false // Still pending/running
+        }
+    }
+    
+    return true
+}
+
+// Detect circular dependencies using depth-first search
+func (dg *DependencyGraph) ValidateDependencies() error {
+    visited := make(map[string]bool)
+    recursionStack := make(map[string]bool)
+    
+    for taskID := range dg.tasks {
+        if !visited[taskID] {
+            if dg.hasCycle(taskID, visited, recursionStack) {
+                return fmt.Errorf("circular dependency detected involving task: %s", taskID)
+            }
+        }
+    }
+    
+    return nil
+}
+
+func (dg *DependencyGraph) hasCycle(taskID string, visited, recursionStack map[string]bool) bool {
+    visited[taskID] = true
+    recursionStack[taskID] = true
+    
+    task := dg.tasks[taskID]
+    for _, depID := range task.DependsOn {
+        if !visited[depID] {
+            if dg.hasCycle(depID, visited, recursionStack) {
+                return true
+            }
+        } else if recursionStack[depID] {
+            return true
+        }
+    }
+    
+    recursionStack[taskID] = false
+    return false
+}
+```
+
+### Enhanced Task Status
+
+```go
+type Status string
+
+const (
+    StatusPending     Status = "pending"     // Task is queued
+    StatusWaiting     Status = "waiting"     // Waiting for dependencies
+    StatusRunning     Status = "running"     // Currently executing
+    StatusReviewing   Status = "reviewing"   // Under review
+    StatusCompleted   Status = "completed"   // Successfully finished
+    StatusFailed      Status = "failed"      // Execution failed
+    StatusSkipped     Status = "skipped"     // Skipped due to dependency policy
+    StatusCancelled   Status = "cancelled"   // Manually cancelled
+)
 ```
 
 ## Automatic Review Feature
@@ -399,8 +564,26 @@ max_queue_size = 100
 queue_dir = "~/.gwq/claude/queue"
 
 # Priority processing
-priority_boost_after = "1h"
-starvation_prevention = true
+priority_boost_after = "1h"               # Boost priority of waiting tasks
+priority_boost_amount = 5                 # Amount to boost (up to max 100)
+starvation_prevention = true               # Prevent low priority tasks from starving
+starvation_threshold = "6h"                # Consider task starved after this time
+max_priority_after_starvation = 85        # Max priority for starved tasks
+
+# Dependency processing
+dependency_timeout = "30m"                 # Max time to wait for dependencies
+dependency_check_interval = "30s"          # How often to check dependency status
+max_dependency_depth = 10                  # Max depth of dependency chains
+parallel_independent_tasks = true          # Run independent tasks in parallel
+validate_dependencies = true               # Validate dependency graph on task creation
+allow_circular_dependencies = false        # Reject tasks with circular dependencies
+required_fields = ["objectives", "instructions", "verification_commands"]
+
+# Task validation
+validate_task_files = true
+validate_priority_range = true             # Ensure priority is 1-100
+min_priority = 1
+max_priority = 100
 
 [claude.tmux]
 # tmux session configuration
@@ -605,18 +788,19 @@ func (c *ClaudeAgent) Capabilities() []Capability {
 ### Future Extension Examples
 
 ```bash
-# Future support for other agents
-gwq cursor task add -b feature/ui "UI implementation"
-gwq copilot task add -b feature/api "API implementation"
+# Future support for other agents with dependencies
+gwq cursor task add -b feature/ui "UI implementation" --depends-on api-endpoints -p 60
+gwq copilot task add -b feature/api "API implementation" --depends-on auth-system -p 70
 
-# Agent-specific features
-gwq claude review run task-123
-gwq cursor pair-programming start
-gwq copilot suggest improvements
+# Agent-specific features with priority
+gwq claude review run task-123 -p 80
+gwq cursor pair-programming start --priority 85
+gwq copilot suggest improvements --depends-on code-review
 
-# Integrated view
-gwq agent list
-gwq agent status --all
+# Integrated view with dependencies
+gwq agent list --with-deps
+gwq agent status --all --show-priority
+gwq agent deps --graph --all-agents
 ```
 
 ## Integration and Workflow
@@ -655,14 +839,39 @@ default_config:
   auto_review: true
   max_iterations: 3
   worktree_base: ".worktrees"        # Relative to repository root
+  dependency_policy: "wait"          # Default dependency handling
+  priority: 50                       # Default priority (normal)
 
 tasks:
+  - id: "setup-database"
+    name: "Database Schema Setup"
+    branch: "feature/database"
+    priority: 80                        # High priority - foundational
+    
+    # No dependencies - can run immediately
+    
   - id: "auth-system-impl"
     name: "Authentication System Implementation"
     branch: "feature/auth"              # Target branch for worktree
-    priority: high
+    priority: 75                        # High priority
+    depends_on: ["setup-database"]      # Wait for database setup
+    dependency_policy: "fail"           # Fail if database setup fails
     
     # Worktree will be created at: .worktrees/feature-auth-auth-system-impl/
+    
+  - id: "api-endpoints"
+    name: "REST API Implementation"
+    branch: "feature/api"
+    priority: 70                        # Lower than auth system
+    depends_on: ["auth-system-impl"]    # Wait for auth to complete
+    dependency_policy: "wait"           # Wait even if auth has issues
+    
+  - id: "frontend-integration"
+    name: "Frontend API Integration"
+    branch: "feature/frontend"
+    priority: 65
+    depends_on: ["api-endpoints", "auth-system-impl"]  # Multiple dependencies
+    dependency_policy: "skip"           # Skip if either dependency fails
     
     # Clear context and objectives
     context: |
@@ -735,15 +944,24 @@ gwq claude task add -b feature/auth \
   --name "Authentication System" \
   --context "$(cat docs/auth-requirements.md)" \
   --verify "make test" \
-  --verify "make security-check"
-  # → Creates .worktrees/feature-auth-<id>/
+  --verify "make security-check" \
+  --depends-on setup-database \
+  --priority 75
+  # → Creates .worktrees/feature-auth-<id>/ (waits for setup-database)
 
-# Start worker (from repository root)
+# Start worker with dependency resolution (from repository root)
 gwq claude worker start --parallel 2
-  # → Worker manages worktrees and executes Claude in each
+  # → Worker manages worktrees, resolves dependencies, and executes Claude in each
 
-# Check work status (shows worktree paths)
+# Check work status (shows worktree paths and dependencies)
 gwq claude task list --watch
+
+# Check dependency status
+gwq claude task deps --status
+  # → Shows dependency graph and current blocking relationships
+
+# Visualize dependency graph
+gwq claude task deps --graph --format svg > task-deps.svg
 
 # Monitor sessions (shows worktree info)
 gwq claude tmux list
@@ -759,40 +977,57 @@ gwq claude review show auth --verbose
 # Next morning, check completed tasks
 gwq claude task list --filter completed
 
-# Cleanup completed task worktrees
+# Cleanup completed task worktrees (respects dependencies)
 gwq claude task cleanup --completed
-  # → Removes .worktrees/feature-*-<completed-ids>/
+  # → Removes .worktrees/feature-*-<completed-ids>/ safely
+
+# Cleanup with dependency checking
+gwq claude task cleanup --safe
+  # → Only removes worktrees if no pending dependents exist
 ```
 
 ### Error Handling Flow
 
 ```bash
-# Check failed tasks
+# Check failed tasks and their impact on dependencies
 gwq claude task list --filter failed
+gwq claude task deps --blocked-by failed-task-id
 
 # Check session directly for debugging
 gwq claude tmux attach auth-impl
 
-# Retry after manual fixes
+# Retry failed task (may unblock dependent tasks)
 gwq claude task retry auth-impl
 
-# Check session directly
-gwq claude tmux attach auth-impl
+# Force execution ignoring dependencies (emergency override)
+gwq claude task start auth-impl --ignore-dependencies
+
+# Cancel task and all dependents
+gwq claude task cancel auth-impl --cascade
+
+# Show dependency chain for debugging
+gwq claude task deps auth-impl --trace
 ```
 
 ## Benefits
 
 1. **Git Worktree Integration**: Automatic worktree management for task isolation
 2. **Repository Root Execution**: Consistent execution from git repository root
-3. **Effective Time Utilization**: Automated development during sleep with structured tasks
-4. **Quality Assurance**: Quality improvement through automatic reviews and verification
-5. **Best Practice Integration**: Follows Claude Code automation best practices
-6. **Structured Task Definition**: Clear objectives, constraints, and success criteria
-7. **Automated Verification**: Built-in command execution for validation
-8. **Efficient Parallel Processing**: Maximum resource utilization with isolated worktrees
-9. **Integrated Management**: Complete functionality in a single command system
-10. **Extensibility**: Future support for other agents
-11. **UX Consistency**: Maintains gwq usability and patterns
+3. **Task Dependency Management**: Complex workflows with dependency resolution
+4. **Numeric Priority System**: Fine-grained priority control (1-100 scale)
+5. **Intelligent Scheduling**: Dependency-aware task scheduling with starvation prevention
+6. **Effective Time Utilization**: Automated development during sleep with structured tasks
+7. **Quality Assurance**: Quality improvement through automatic reviews and verification
+8. **Best Practice Integration**: Follows Claude Code automation best practices
+9. **Structured Task Definition**: Clear objectives, constraints, and success criteria
+10. **Automated Verification**: Built-in command execution for validation
+11. **Efficient Parallel Processing**: Maximum resource utilization with isolated worktrees
+12. **Dependency Visualization**: Graph-based dependency visualization and debugging
+13. **Flexible Dependency Policies**: Wait, skip, or fail based on dependency outcomes
+14. **Circular Dependency Detection**: Prevents invalid dependency configurations
+15. **Integrated Management**: Complete functionality in a single command system
+16. **Extensibility**: Future support for other agents
+17. **UX Consistency**: Maintains gwq usability and patterns
 
 ## Limitations
 
@@ -803,19 +1038,25 @@ gwq claude tmux attach auth-impl
 5. Requires network connection
 6. Important to manage resource usage and worktree disk space
 7. Worktree cleanup may be needed for long-running systems
+8. Complex dependency chains may create scheduling bottlenecks
+9. Dependency timeout management requires careful configuration
+10. Memory usage increases with large dependency graphs
 
 ## Summary
 
-This design enables gwq to function as a git worktree-based Claude Code automated development platform, effectively utilizing developer idle time. The worktree-first approach ensures task isolation and maintains clean repository state, while execution from repository root provides consistent behavior. The design considers future extensibility and can support other AI agents.
+This design enables gwq to function as a git worktree-based Claude Code automated development platform with sophisticated dependency management, effectively utilizing developer idle time. The worktree-first approach ensures task isolation and maintains clean repository state, while execution from repository root provides consistent behavior. The numeric priority system (1-100) and dependency resolution enable complex workflows with proper sequencing. The design considers future extensibility and can support other AI agents.
 
 ## Key Workflow
 
 1. **Repository Root**: Execute all `gwq claude` commands from git repository root
-2. **Worktree Creation**: Automatic worktree creation at `.worktrees/{branch}-{task-id}/`
-3. **Task Execution**: Claude Code runs inside isolated worktree environment
-4. **Verification**: Commands executed within worktree context
-5. **Session Management**: tmux sessions track worktree-based execution
-6. **Cleanup**: Optional cleanup of completed task worktrees
+2. **Dependency Analysis**: Validate dependency graph and detect circular dependencies
+3. **Worktree Creation**: Automatic worktree creation at `.worktrees/{branch}-{task-id}/`
+4. **Dependency Resolution**: Wait for required tasks before execution
+5. **Task Execution**: Claude Code runs inside isolated worktree environment
+6. **Verification**: Commands executed within worktree context
+7. **Session Management**: tmux sessions track worktree-based execution
+8. **Dependency Updates**: Real-time dependency status monitoring
+9. **Cleanup**: Safe cleanup respecting dependency relationships
 
 ## Related Documentation
 
