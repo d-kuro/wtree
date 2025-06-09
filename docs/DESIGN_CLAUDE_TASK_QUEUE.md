@@ -193,12 +193,10 @@ gwq claude task list --verbose
 gwq claude task list --json
 gwq claude task list --csv
 
-# Filter and sort
+# Filter tasks (tree structure maintained)
 gwq claude task list --filter running
-gwq claude task list --filter waiting          # Tasks waiting for dependencies
-gwq claude task list --sort priority --reverse  # Highest priority first
-gwq claude task list --priority-min 75          # Only high priority tasks
-gwq claude task list --has-dependencies         # Tasks with dependencies
+gwq claude task list --filter waiting
+gwq claude task list --priority-min 75
 
 # Real-time monitoring
 gwq claude task list --watch
@@ -208,11 +206,8 @@ gwq claude task show auth-impl
 gwq claude task show auth  # Pattern matching
 gwq claude task show       # Fuzzy finder
 
-# Dependency management
-gwq claude task deps auth-impl           # Show dependencies for task
-gwq claude task deps --graph             # Visualize dependency graph
-gwq claude task deps --blocked           # Show blocked tasks
-gwq claude task deps --ready             # Show tasks ready to run
+# Dependency information (included in tree view)
+gwq claude task show auth-impl           # Show detailed task info with dependencies
 ```
 
 #### `gwq claude worker`
@@ -565,25 +560,16 @@ queue_dir = "~/.gwq/claude/queue"
 
 # Priority processing
 priority_boost_after = "1h"               # Boost priority of waiting tasks
-priority_boost_amount = 5                 # Amount to boost (up to max 100)
 starvation_prevention = true               # Prevent low priority tasks from starving
-starvation_threshold = "6h"                # Consider task starved after this time
-max_priority_after_starvation = 85        # Max priority for starved tasks
 
 # Dependency processing
 dependency_timeout = "30m"                 # Max time to wait for dependencies
-dependency_check_interval = "30s"          # How often to check dependency status
-max_dependency_depth = 10                  # Max depth of dependency chains
-parallel_independent_tasks = true          # Run independent tasks in parallel
+max_dependency_depth = 5                   # Max depth of dependency chains
 validate_dependencies = true               # Validate dependency graph on task creation
-allow_circular_dependencies = false        # Reject tasks with circular dependencies
-required_fields = ["objectives", "instructions", "verification_commands"]
 
 # Task validation
 validate_task_files = true
-validate_priority_range = true             # Ensure priority is 1-100
-min_priority = 1
-max_priority = 100
+required_fields = ["objectives", "instructions", "verification_commands"]
 
 [claude.tmux]
 # tmux session configuration
@@ -1013,21 +999,19 @@ gwq claude task deps auth-impl --trace
 
 1. **Git Worktree Integration**: Automatic worktree management for task isolation
 2. **Repository Root Execution**: Consistent execution from git repository root
-3. **Task Dependency Management**: Complex workflows with dependency resolution
+3. **Tree Structure Visualization**: Clear dependency relationships in task list
 4. **Numeric Priority System**: Fine-grained priority control (1-100 scale)
-5. **Intelligent Scheduling**: Dependency-aware task scheduling with starvation prevention
+5. **Simple Dependency Management**: Essential dependency resolution without complexity
 6. **Effective Time Utilization**: Automated development during sleep with structured tasks
 7. **Quality Assurance**: Quality improvement through automatic reviews and verification
 8. **Best Practice Integration**: Follows Claude Code automation best practices
 9. **Structured Task Definition**: Clear objectives, constraints, and success criteria
 10. **Automated Verification**: Built-in command execution for validation
 11. **Efficient Parallel Processing**: Maximum resource utilization with isolated worktrees
-12. **Dependency Visualization**: Graph-based dependency visualization and debugging
-13. **Flexible Dependency Policies**: Wait, skip, or fail based on dependency outcomes
-14. **Circular Dependency Detection**: Prevents invalid dependency configurations
-15. **Integrated Management**: Complete functionality in a single command system
-16. **Extensibility**: Future support for other agents
-17. **UX Consistency**: Maintains gwq usability and patterns
+12. **Clean UX**: Focused on essential features without feature bloat
+13. **Integrated Management**: Complete functionality in a single command system
+14. **Extensibility**: Future support for other agents
+15. **UX Consistency**: Maintains gwq usability and patterns
 
 ## Limitations
 
@@ -1038,9 +1022,7 @@ gwq claude task deps auth-impl --trace
 5. Requires network connection
 6. Important to manage resource usage and worktree disk space
 7. Worktree cleanup may be needed for long-running systems
-8. Complex dependency chains may create scheduling bottlenecks
-9. Dependency timeout management requires careful configuration
-10. Memory usage increases with large dependency graphs
+8. Deep dependency chains (>5 levels) may impact performance
 
 ## Summary
 
