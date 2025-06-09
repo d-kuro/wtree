@@ -8,8 +8,10 @@ The design is Claude Code-focused while maintaining extensibility for future AI 
 
 ## Core Concepts
 
-### Claude Code-Focused Design
+### Git Worktree-First Design
 
+- **Repository Root Execution**: All `gwq claude` commands executed from git repository root
+- **Automatic Worktree Management**: Tasks always use git worktrees for isolation
 - **Dedicated Commands**: All functionality provided through `gwq claude` subcommands
 - **Automatic Review**: Automatically execute code reviews upon task completion
 - **tmux Integration**: Process persistence using tmux session management
@@ -66,18 +68,44 @@ graph TD
 type Task struct {
     ID           string            `json:"id"`
     Name         string            `json:"name"`
-    Description  string            `json:"description"`
-    Branch       string            `json:"branch"`
+    Branch       string            `json:"branch"`              // Target branch for worktree
     Priority     Priority          `json:"priority"`
     Status       Status            `json:"status"`
     CreatedAt    time.Time         `json:"created_at"`
     StartedAt    *time.Time        `json:"started_at,omitempty"`
     CompletedAt  *time.Time        `json:"completed_at,omitempty"`
-    WorktreePath string            `json:"worktree_path,omitempty"`
+    
+    // Git worktree information (required)
+    RepositoryRoot   string            `json:"repository_root"`        // Git repository root path
+    WorktreePath     string            `json:"worktree_path"`          // Dedicated worktree path for this task
+    WorktreeName     string            `json:"worktree_name"`          // Worktree identifier
+    
     SessionID    string            `json:"session_id,omitempty"`
     AgentType    string            `json:"agent_type"`
+    
+    // Enhanced task definition based on Claude Code best practices
+    Context              string            `json:"context"`                // Background and problem description
+    Objectives           []string          `json:"objectives"`             // Clear, measurable goals
+    Instructions         string            `json:"instructions"`           // Detailed implementation guidance
+    Constraints          []string          `json:"constraints"`            // Limitations and requirements
+    FilesToFocus         []string          `json:"files_to_focus"`         // Key files to work on (relative to worktree)
+    VerificationCommands []string          `json:"verification_commands"`  // Commands to verify success (run in worktree)
+    
+    // Task configuration
+    Config TaskConfig `json:"config"`
+    
+    // Results
     Result       *TaskResult       `json:"result,omitempty"`
     ReviewResult *ReviewResult     `json:"review_result,omitempty"`
+}
+
+type TaskConfig struct {
+    SkipPermissions bool          `json:"skip_permissions"`
+    Timeout         string        `json:"timeout"`
+    MaxIterations   int           `json:"max_iterations"`
+    AutoReview      bool          `json:"auto_review"`
+    AutoCommit      bool          `json:"auto_commit"`
+    BackupFiles     bool          `json:"backup_files"`
 }
 
 type Priority int
@@ -120,19 +148,22 @@ type ReviewResult struct {
 Task management functionality (following existing patterns):
 
 ```bash
-# Add tasks
+# Add tasks (executed from repository root)
 gwq claude task add -b feature/auth "Authentication system implementation"
+  # → Creates worktree at .worktrees/feature-auth-<task-id>
 gwq claude task add -b feature/api "REST API implementation" -p high
+  # → Creates worktree at .worktrees/feature-api-<task-id>
 gwq claude task add -f tasks.yaml  # Batch registration from YAML
+  # → Creates worktrees for each task
 
 # Task list (status command pattern)
 gwq claude task list
 
 # Output:
-# TASK          BRANCH        STATUS      PRIORITY   DURATION
-# ● auth-impl   feature/auth  running     normal     45m
-#   api-dev     feature/api   pending     high       -
-#   bug-fix     bugfix/login  completed   urgent     2h 15m
+# TASK          BRANCH        WORKTREE                    STATUS      PRIORITY   DURATION
+# ● auth-impl   feature/auth  .worktrees/feature-auth-abc running     normal     45m
+#   api-dev     feature/api   .worktrees/feature-api-def  pending     high       -
+#   bug-fix     bugfix/login  .worktrees/bugfix-login-ghi completed   urgent     2h 15m
 
 # Detailed information
 gwq claude task list --verbose
@@ -223,30 +254,43 @@ gwq claude review run auth-impl
 
 #### `gwq claude start/stop`
 
-Direct execution commands:
+Direct execution commands (executed from repository root):
 
 ```bash
-# Start Claude in current worktree
-gwq claude start
-gwq claude start --task "Please fix bugs"
+# Start Claude with structured task (creates worktree)
+gwq claude start --task-file task.yaml
+  # → Creates worktree and executes Claude inside it
 
-# Specify worktree with pattern matching
-gwq claude start -w feature/auth --task "Authentication system implementation"
+# Quick start with inline context (from repository root)
+gwq claude start -b feature/bugfix \
+  --objective "Fix all failing tests" \
+  --verify "make test" \
+  --constraint "Don't modify public APIs"
+  # → Creates .worktrees/feature-bugfix-<id>/ and runs Claude there
 
-# Background execution
-gwq claude start --background --task "Add tests"
+# Start with existing worktree
+gwq claude start -b feature/auth \
+  --context "$(cat docs/auth-spec.md)" \
+  --objective "Complete JWT authentication" \
+  --verify "make test" \
+  --verify "make security-scan"
+  # → Uses existing .worktrees/feature-auth-*/ or creates new one
 
-# List running Claude instances
+# List running Claude instances (shows worktree paths)
 gwq claude list
 
 # Output:
-# TASK         WORKTREE        STATUS     DURATION   SESSION
-# auth-impl    feature/auth    running    45m        attached
-# api-dev      feature/api     idle       1h 20m     detached
+# TASK         BRANCH        WORKTREE                    STATUS     DURATION
+# auth-impl    feature/auth  .worktrees/feature-auth-abc running    45m
+# api-dev      feature/api   .worktrees/feature-api-def  running    1h 20m
 
 # Stop Claude
 gwq claude stop auth
 gwq claude stop --all
+
+# Cleanup specific worktree
+gwq claude cleanup auth-impl
+  # → Removes .worktrees/feature-auth-abc/
 ```
 
 ## Automatic Review Feature
@@ -410,19 +454,26 @@ type ClaudeAgent struct {
 func (c *ClaudeAgent) Name() string { return "claude" }
 
 func (c *ClaudeAgent) Execute(ctx context.Context, task *Task) (*TaskResult, error) {
+    // Ensure worktree exists for the task
+    if err := c.ensureWorktree(task); err != nil {
+        return nil, fmt.Errorf("failed to prepare worktree: %w", err)
+    }
+    
     // Build Claude Code command with automation flags
     cmd := c.buildCommand(task)
     
-    // Create tmux session for persistent execution
+    // Create tmux session for persistent execution in worktree
     session, err := c.sessionMgr.CreateSession(ctx, SessionOptions{
         Context:    "claude",
-        Identifier: task.ID,
-        WorkingDir: task.WorktreePath,
+        Identifier: fmt.Sprintf("%s-%s", task.Branch, task.ID),
+        WorkingDir: task.WorktreePath,  // Execute Claude inside worktree
         Command:    cmd,
         Metadata: map[string]string{
-            "task_id":   task.ID,
-            "task_name": task.Name,
-            "branch":    task.Branch,
+            "task_id":      task.ID,
+            "task_name":    task.Name,
+            "branch":       task.Branch,
+            "worktree":     task.WorktreePath,
+            "repo_root":    task.RepositoryRoot,
         },
     })
     if err != nil {
@@ -436,6 +487,28 @@ func (c *ClaudeAgent) Execute(ctx context.Context, task *Task) (*TaskResult, err
     }
     
     return result, nil
+}
+
+func (c *ClaudeAgent) ensureWorktree(task *Task) error {
+    // Check if worktree already exists
+    if _, err := os.Stat(task.WorktreePath); err == nil {
+        return nil // Worktree already exists
+    }
+    
+    // Create new worktree from repository root
+    cmd := exec.Command("git", "worktree", "add", task.WorktreePath, task.Branch)
+    cmd.Dir = task.RepositoryRoot
+    
+    if err := cmd.Run(); err != nil {
+        // If branch doesn't exist, create it
+        createBranchCmd := exec.Command("git", "worktree", "add", "-b", task.Branch, task.WorktreePath)
+        createBranchCmd.Dir = task.RepositoryRoot
+        if err := createBranchCmd.Run(); err != nil {
+            return fmt.Errorf("failed to create worktree with new branch: %w", err)
+        }
+    }
+    
+    return nil
 }
 
 func (c *ClaudeAgent) buildCommand(task *Task) string {
@@ -551,45 +624,98 @@ gwq agent status --all
 ### Integration with Existing Commands
 
 ```bash
-# Create task when creating worktree
-gwq add -b feature/auth --with-task "Authentication system implementation"
+# Integration with existing gwq commands (executed from repository root)
+
+# Create worktree and Claude task together
+gwq add -b feature/auth --with-claude-task "Authentication system implementation"
+  # → Creates worktree AND registers Claude task
 
 # Display Claude information in status command
 gwq status --verbose
 
 # Output:
-# BRANCH          STATUS    CHANGES        ACTIVITY      CLAUDE
-# ● main          clean     -             2 hours ago   -
-#   feature/auth  changed   5 added, 3 mod running       auth-impl
-#   feature/api   clean     -             pending       api-dev (queued)
+# BRANCH            STATUS       CHANGES        ACTIVITY      CLAUDE TASKS
+# ● main            clean        -             2 hours ago   -
+#   feature/auth    changed      5 added, 3 mod running       auth-impl (.worktrees/feature-auth-abc)
+#   feature/api     clean        -             pending       api-dev (queued)
+# 
+# Claude Worktrees:
+# .worktrees/feature-auth-abc123   running   auth-impl        1h 25m
+# .worktrees/feature-api-def456    pending   api-dev          -
 ```
 
 ### Task File Format
 
 ```yaml
-# tasks.yaml
+# tasks.yaml (executed from repository root)
+version: "1.0"
+default_config:
+  skip_permissions: true
+  timeout: "2h"
+  auto_review: true
+  max_iterations: 3
+  worktree_base: ".worktrees"        # Relative to repository root
+
 tasks:
-  - name: "Authentication system implementation"
-    branch: "feature/auth"
+  - id: "auth-system-impl"
+    name: "Authentication System Implementation"
+    branch: "feature/auth"              # Target branch for worktree
     priority: high
-    description: |
-      Complete JWT authentication system implementation:
-      - Login/logout functionality
-      - Token management
-      - Permission checks
-      - Add tests
-    with_review: true
     
-  - name: "API specification implementation"
-    branch: "feature/api"  
-    priority: normal
-    description: |
-      REST API implementation based on OpenAPI specification:
-      - Create endpoints
-      - Add validation
-      - Error handling
-      - Update documentation
-    with_review: true
+    # Worktree will be created at: .worktrees/feature-auth-auth-system-impl/
+    
+    # Clear context and objectives
+    context: |
+      We need to implement a JWT-based authentication system for our web application.
+      The existing codebase uses Go with Gin framework and PostgreSQL database.
+      
+    objectives:
+      - "Implement secure JWT token generation and validation"
+      - "Create login/logout endpoints with proper error handling"
+      - "Add middleware for route protection"
+      - "Write comprehensive tests with >90% coverage"
+      - "Update API documentation"
+    
+    # Specific instructions and constraints
+    instructions: |
+      Please implement the authentication system following these guidelines:
+      
+      1. **Security Requirements:**
+         - Use RS256 for JWT signing
+         - Implement proper password hashing with bcrypt
+         - Add rate limiting for login attempts
+         - Include CSRF protection
+      
+      2. **Code Structure:**
+         - Follow existing project patterns in `internal/auth/`
+         - Use the existing database connection pool
+         - Implement proper error handling with structured logging
+      
+      3. **Testing:**
+         - Write unit tests for all auth functions
+         - Add integration tests for endpoints
+         - Include edge cases and security scenarios
+    
+    constraints:
+      - "Do not modify existing user table schema"
+      - "Maintain backward compatibility with current session handling"
+      - "Follow OWASP security guidelines"
+    
+    files_to_focus:
+      - "internal/auth/**"
+      - "internal/middleware/**"
+      - "cmd/server/routes.go"
+      - "docs/api.md"
+    
+    verification_commands:
+      - "make test"
+      - "make lint"
+      - "make security-check"
+      - "go mod tidy"
+    
+    config:
+      timeout: "3h"
+      max_iterations: 5
 ```
 
 ## Usage Examples
@@ -597,19 +723,34 @@ tasks:
 ### Daily Development Flow
 
 ```bash
-# Morning work preparation
-gwq claude task add -b feature/auth "Authentication system implementation" 
-gwq claude task add -b feature/api "API implementation" -p high
-gwq claude task add -f evening-tasks.yaml
+# Execute ALL commands from repository root
+cd /path/to/your/project
 
-# Start worker
+# Morning work preparation - load structured tasks
+gwq claude task add -f daily-tasks.yaml
+  # → Creates worktrees for each task under .worktrees/
+
+# Or add individual tasks with context
+gwq claude task add -b feature/auth \
+  --name "Authentication System" \
+  --context "$(cat docs/auth-requirements.md)" \
+  --verify "make test" \
+  --verify "make security-check"
+  # → Creates .worktrees/feature-auth-<id>/
+
+# Start worker (from repository root)
 gwq claude worker start --parallel 2
+  # → Worker manages worktrees and executes Claude in each
 
-# Check work status
+# Check work status (shows worktree paths)
 gwq claude task list --watch
 
-# Monitor sessions
+# Monitor sessions (shows worktree info)
 gwq claude tmux list
+
+# Check worktree status integration
+gwq status --verbose
+  # Shows both regular worktrees and Claude task worktrees
 
 # Evening, check review results
 gwq claude review list
@@ -617,7 +758,10 @@ gwq claude review show auth --verbose
 
 # Next morning, check completed tasks
 gwq claude task list --filter completed
-gwq status --verbose
+
+# Cleanup completed task worktrees
+gwq claude task cleanup --completed
+  # → Removes .worktrees/feature-*-<completed-ids>/
 ```
 
 ### Error Handling Flow
@@ -638,23 +782,40 @@ gwq claude tmux attach auth-impl
 
 ## Benefits
 
-1. **Effective Time Utilization**: Automated development during sleep
-2. **Quality Assurance**: Quality improvement through automatic reviews
-3. **Efficient Parallel Processing**: Maximum resource utilization
-4. **Integrated Management**: Complete functionality in a single command system
-5. **Extensibility**: Future support for other agents
-6. **UX Consistency**: Maintains gwq usability
+1. **Git Worktree Integration**: Automatic worktree management for task isolation
+2. **Repository Root Execution**: Consistent execution from git repository root
+3. **Effective Time Utilization**: Automated development during sleep with structured tasks
+4. **Quality Assurance**: Quality improvement through automatic reviews and verification
+5. **Best Practice Integration**: Follows Claude Code automation best practices
+6. **Structured Task Definition**: Clear objectives, constraints, and success criteria
+7. **Automated Verification**: Built-in command execution for validation
+8. **Efficient Parallel Processing**: Maximum resource utilization with isolated worktrees
+9. **Integrated Management**: Complete functionality in a single command system
+10. **Extensibility**: Future support for other agents
+11. **UX Consistency**: Maintains gwq usability and patterns
 
 ## Limitations
 
 1. Requires Claude Code execution environment
 2. Requires tmux installation
-3. Requires network connection
-4. Important to manage resource usage
+3. Requires git repository with worktree support
+4. Requires execution from repository root
+5. Requires network connection
+6. Important to manage resource usage and worktree disk space
+7. Worktree cleanup may be needed for long-running systems
 
 ## Summary
 
-This design enables gwq to function as a Claude Code-focused automated development platform, effectively utilizing developer idle time. The design considers future extensibility and can support other AI agents.
+This design enables gwq to function as a git worktree-based Claude Code automated development platform, effectively utilizing developer idle time. The worktree-first approach ensures task isolation and maintains clean repository state, while execution from repository root provides consistent behavior. The design considers future extensibility and can support other AI agents.
+
+## Key Workflow
+
+1. **Repository Root**: Execute all `gwq claude` commands from git repository root
+2. **Worktree Creation**: Automatic worktree creation at `.worktrees/{branch}-{task-id}/`
+3. **Task Execution**: Claude Code runs inside isolated worktree environment
+4. **Verification**: Commands executed within worktree context
+5. **Session Management**: tmux sessions track worktree-based execution
+6. **Cleanup**: Optional cleanup of completed task worktrees
 
 ## Related Documentation
 
