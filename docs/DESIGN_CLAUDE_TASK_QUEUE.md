@@ -177,21 +177,21 @@ gwq claude worker stop
 gwq claude worker config
 ```
 
-#### `gwq claude session`
+#### `gwq claude tmux`
 
-Session management (tmux integration):
+tmux session management:
 
 ```bash
 # Session list
-gwq claude session list
+gwq claude tmux list
 
 # Attach to session (pattern matching)
-gwq claude session attach auth
-gwq claude session attach        # Fuzzy finder
+gwq claude tmux attach auth
+gwq claude tmux attach        # Fuzzy finder
 
 # Terminate session
-gwq claude session kill auth
-gwq claude session kill --completed
+gwq claude tmux kill auth
+gwq claude tmux kill --completed
 ```
 
 #### `gwq claude review`
@@ -358,7 +358,7 @@ queue_dir = "~/.gwq/claude/queue"
 priority_boost_after = "1h"
 starvation_prevention = true
 
-[claude.session]
+[claude.tmux]
 # tmux session configuration
 auto_create_session = true
 session_prefix = "gwq-claude"
@@ -499,7 +499,7 @@ gwq claude worker start --parallel 2
 gwq claude task list --watch
 
 # Monitor sessions
-gwq claude session list
+gwq claude tmux list
 
 # Evening, check review results
 gwq claude review list
@@ -517,13 +517,13 @@ gwq status --verbose
 gwq claude task list --filter failed
 
 # Check session directly for debugging
-gwq claude session attach auth-impl
+gwq claude tmux attach auth-impl
 
 # Retry after manual fixes
 gwq claude task retry auth-impl
 
 # Check session directly
-gwq claude session attach auth-impl
+gwq claude tmux attach auth-impl
 ```
 
 ## Benefits

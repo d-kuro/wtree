@@ -123,15 +123,15 @@ func (s *SessionManager) SaveHistory(sessionName, filename string) error {
 
 ## Command Design
 
-### gwq session subcommands
+### gwq tmux subcommands
 
-#### `gwq session list`
+#### `gwq tmux list`
 
 List running Claude Code sessions (following existing status command patterns):
 
 ```bash
 # Session list (simple table format)
-gwq session list
+gwq tmux list
 
 # Output:
 # TASK          WORKTREE        STATUS     DURATION
@@ -140,70 +140,70 @@ gwq session list
 #   auth-review review/auth     completed  2h 15m
 
 # Detailed information
-gwq session list --verbose
+gwq tmux list --verbose
 
 # JSON output
-gwq session list --json
+gwq tmux list --json
 
 # CSV output
-gwq session list --csv
+gwq tmux list --csv
 
 # Real-time monitoring
-gwq session list --watch
+gwq tmux list --watch
 
 # Status filter
-gwq session list --filter running
-gwq session list --filter completed
+gwq tmux list --filter running
+gwq tmux list --filter completed
 
 # Sort
-gwq session list --sort duration
-gwq session list --sort task
+gwq tmux list --sort duration
+gwq tmux list --sort task
 ```
 
-#### `gwq session attach`
+#### `gwq tmux attach`
 
 Attach to sessions (following existing get/exec patterns):
 
 ```bash
 # Attach with pattern matching
-gwq session attach auth
+gwq tmux attach auth
 
 # Attach with exact match
-gwq session attach auth-impl
+gwq tmux attach auth-impl
 
 # Auto fuzzy finder when multiple matches
-gwq session attach feature  # when feature/* matches
+gwq tmux attach feature  # when feature/* matches
 
 # Fuzzy finder selection for all sessions without arguments
-gwq session attach
+gwq tmux attach
 
 # Explicit fuzzy finder usage
-gwq session attach -i
+gwq tmux attach -i
 ```
 
 
-#### `gwq session kill`
+#### `gwq tmux kill`
 
 Terminate sessions (following existing remove patterns):
 
 ```bash
 # Terminate with pattern matching
-gwq session kill auth
+gwq tmux kill auth
 
 # Auto fuzzy finder when multiple matches
-gwq session kill feature
+gwq tmux kill feature
 
 # Fuzzy finder selection without arguments
-gwq session kill
+gwq tmux kill
 
 # Explicit fuzzy finder usage
-gwq session kill -i
+gwq tmux kill -i
 
 # Terminate all sessions (with confirmation)
-gwq session kill --all
+gwq tmux kill --all
 
 # Cleanup only completed sessions
-gwq session kill --completed
+gwq tmux kill --completed
 ```
 
 ## Task Queue Integration
@@ -303,7 +303,7 @@ grep "authentication" /tmp/history.txt
 ### tmux Session Configuration
 
 ```toml
-[session]
+[tmux]
 # Enable tmux integration
 enabled = true
 
@@ -314,7 +314,6 @@ auto_create_session = true
 detach_on_create = true
 auto_cleanup_completed = true
 
-[session.tmux]
 # tmux configuration
 tmux_command = "tmux"
 default_shell = "/bin/bash"
@@ -323,7 +322,6 @@ default_shell = "/bin/bash"
 session_timeout = "24h"
 keep_alive = true
 
-[session.history]
 # tmux history configuration
 history_limit = 50000
 history_auto_save = true
@@ -339,17 +337,17 @@ history_save_dir = "~/.gwq/history"
 gwq task add -b feature/auth "Authentication system implementation"
 
 # Check session status (status command pattern)
-gwq session list
+gwq tmux list
 gwq status --verbose  # includes session information
 
 # Attach to session to check progress
-gwq session attach auth
+gwq tmux attach auth
 
 # Detach from session (Ctrl+B, D)
 # → Claude Code continues execution
 
 # Next morning, check results
-gwq session list --filter completed
+gwq tmux list --filter completed
 # Use tmux history to check output
 tmux capture-pane -t gwq-claude-auth-* -p -S -100
 ```
@@ -364,10 +362,10 @@ tmux capture-pane -t session-name -p -S -1000 | grep "error\|failed\|exception"
 tmux capture-pane -t session-name -p -S -1000 | grep "auth.go"
 
 # Identify long-running tasks
-gwq session list --sort duration
+gwq tmux list --sort duration
 
 # Display only running sessions
-gwq session list --filter running
+gwq tmux list --filter running
 ```
 
 ## Benefits
