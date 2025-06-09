@@ -12,7 +12,7 @@ The design is Claude Code-focused while maintaining extensibility for future AI 
 
 - **Dedicated Commands**: All functionality provided through `gwq claude` subcommands
 - **Automatic Review**: Automatically execute code reviews upon task completion
-- **Session Management**: Process persistence using tmux
+- **tmux Integration**: Process persistence using tmux session management
 - **Parallelism Control**: System-wide Claude Code parallel execution control
 
 ### Future Extensibility
@@ -46,7 +46,7 @@ graph TD
     A[gwq claude] --> B[Task Manager]
     B --> C[Claude Agent]
     B --> D[Review Agent] 
-    B --> E[Session Manager]
+    B --> E[tmux Manager]
     
     C --> F[Claude Code Process]
     D --> G[Review Process]
@@ -179,19 +179,19 @@ gwq claude worker config
 
 #### `gwq claude tmux`
 
-tmux session management:
+tmux session management (delegates to generic tmux commands):
 
 ```bash
-# Session list
-gwq claude tmux list
+# Session list (filtered for Claude sessions)
+gwq tmux list --context claude
 
-# Attach to session (pattern matching)
-gwq claude tmux attach auth
-gwq claude tmux attach        # Fuzzy finder
+# Attach to Claude session (pattern matching)
+gwq tmux attach claude-auth
+gwq tmux attach --context claude  # Fuzzy finder for Claude sessions
 
-# Terminate session
-gwq claude tmux kill auth
-gwq claude tmux kill --completed
+# Terminate Claude session
+gwq tmux kill claude-auth
+gwq tmux kill --context claude --status completed
 ```
 
 #### `gwq claude review`
@@ -548,4 +548,4 @@ This design enables gwq to function as a Claude Code-focused automated developme
 
 ## Related Documentation
 
-- [DESIGN_TMUX_SESSION.md](./DESIGN_TMUX_SESSION.md) - Detailed tmux session management
+- [DESIGN_TMUX_SESSION.md](./DESIGN_TMUX_SESSION.md) - Generic tmux session management foundation

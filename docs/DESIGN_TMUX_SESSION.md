@@ -2,26 +2,27 @@
 
 ## Overview
 
-Design for tmux integration focused on session management and log saving during Claude Code execution. This design focuses on Claude Code process management and log recording without complex layout management.
+Design for tmux integration to provide session management capabilities for gwq. This enables process persistence, monitoring, and history management for any long-running commands or processes.
 
 ## Core Concepts
 
 ### Session Management Goals
 
-1. **Process Persistence**: Make Claude Code execution independent of terminal connections
-2. **Log Preservation**: Automatically record all Claude Code output
-3. **Monitoring**: Monitor the status of running Claude Code instances
+1. **Process Persistence**: Make command execution independent of terminal connections
+2. **History Preservation**: Automatically preserve command output in tmux history
+3. **Monitoring**: Monitor the status of running processes
 4. **Detach/Attach**: Continue processing even when terminal is closed
 
 ### Session Naming Convention
 
 ```
-gwq-claude-{task-id}-{timestamp}
+gwq-{context}-{identifier}-{timestamp}
 ```
 
 Examples:
-- `gwq-claude-abc123-20240115103045`
+- `gwq-task-abc123-20240115103045`
 - `gwq-claude-def456-20240115110230`
+- `gwq-test-feature-auth-20240115120000`
 
 ## Architecture
 
@@ -33,16 +34,26 @@ type SessionManager struct {
     tmuxCmd   *TmuxCommand
 }
 
-type ClaudeSession struct {
-    ID          string    `json:"id"`
-    SessionName string    `json:"session_name"`
-    TaskID      string    `json:"task_id"`
-    WorktreePath string   `json:"worktree_path"`
-    Command     string    `json:"command"`
-    PID         int       `json:"pid"`
-    StartTime   time.Time `json:"start_time"`
-    Status      Status    `json:"status"`
-    HistorySize int       `json:"history_size"`
+type Session struct {
+    ID           string            `json:"id"`
+    SessionName  string            `json:"session_name"`
+    Context      string            `json:"context"`     // e.g., "task", "claude", "test"
+    Identifier   string            `json:"identifier"`  // e.g., task ID, branch name
+    WorkingDir   string            `json:"working_dir"`
+    Command      string            `json:"command"`
+    PID          int               `json:"pid"`
+    StartTime    time.Time         `json:"start_time"`
+    Status       Status            `json:"status"`
+    HistorySize  int               `json:"history_size"`
+    Metadata     map[string]string `json:"metadata,omitempty"`
+}
+
+type SessionOptions struct {
+    Context    string
+    Identifier string  
+    WorkingDir string
+    Command    string
+    Metadata   map[string]string
 }
 
 type Status string
@@ -59,14 +70,14 @@ const (
 
 ### Session Creation
 
-Automatically create tmux sessions when executing Claude Code:
+Create tmux sessions for any long-running commands:
 
 ```go
-func (s *SessionManager) CreateSession(taskID, worktreePath, command string) (*ClaudeSession, error) {
-    sessionName := fmt.Sprintf("gwq-claude-%s-%s", taskID, time.Now().Format("20060102150405"))
+func (s *SessionManager) CreateSession(ctx context.Context, opts SessionOptions) (*Session, error) {
+    sessionName := fmt.Sprintf("gwq-%s-%s-%s", opts.Context, opts.Identifier, time.Now().Format("20060102150405"))
     
     // Create tmux session with increased history limit
-    tmuxCmd := fmt.Sprintf("tmux new-session -d -s %s -c %s", sessionName, worktreePath)
+    tmuxCmd := fmt.Sprintf("tmux new-session -d -s %s -c %s", sessionName, opts.WorkingDir)
     if err := exec.Command("sh", "-c", tmuxCmd).Run(); err != nil {
         return nil, err
     }
@@ -75,19 +86,21 @@ func (s *SessionManager) CreateSession(taskID, worktreePath, command string) (*C
     historyCmd := fmt.Sprintf("tmux set-option -t %s history-limit %d", sessionName, s.config.HistoryLimit)
     exec.Command("sh", "-c", historyCmd).Run()
     
-    // Execute Claude Code in the session
-    claudeCmd := fmt.Sprintf("tmux send-keys -t %s '%s' Enter", sessionName, command)
-    exec.Command("sh", "-c", claudeCmd).Run()
+    // Execute command in the session
+    cmdExec := fmt.Sprintf("tmux send-keys -t %s '%s' Enter", sessionName, opts.Command)
+    exec.Command("sh", "-c", cmdExec).Run()
     
-    session := &ClaudeSession{
+    session := &Session{
         ID:           generateID(),
         SessionName:  sessionName,
-        TaskID:       taskID,
-        WorktreePath: worktreePath,
-        Command:      command,
+        Context:      opts.Context,
+        Identifier:   opts.Identifier,
+        WorkingDir:   opts.WorkingDir,
+        Command:      opts.Command,
         StartTime:    time.Now(),
         Status:       StatusRunning,
         HistorySize:  s.config.HistoryLimit,
+        Metadata:     opts.Metadata,
     }
     
     return session, nil
@@ -127,17 +140,17 @@ func (s *SessionManager) SaveHistory(sessionName, filename string) error {
 
 #### `gwq tmux list`
 
-List running Claude Code sessions (following existing status command patterns):
+List running tmux sessions (following existing status command patterns):
 
 ```bash
 # Session list (simple table format)
 gwq tmux list
 
 # Output:
-# TASK          WORKTREE        STATUS     DURATION
-# ● auth-impl   feature/auth    running    1h 25m
-#   api-dev     feature/api     running    45m
-#   auth-review review/auth     completed  2h 15m
+# CONTEXT     IDENTIFIER      STATUS     DURATION   COMMAND
+# ● claude    auth-impl       running    1h 25m     claude --task "impl auth"
+#   task      api-dev         running    45m        make test
+#   test      feature-auth    completed  2h 15m     go test -v ./...
 
 # Detailed information
 gwq tmux list --verbose
@@ -182,6 +195,24 @@ gwq tmux attach -i
 ```
 
 
+#### `gwq tmux run`
+
+Run commands in tmux sessions:
+
+```bash
+# Run command in current directory
+gwq tmux run "npm run dev"
+
+# Run in specific worktree
+gwq tmux run -w feature/auth "make test"
+
+# Run with custom identifier
+gwq tmux run --id test-suite "go test -v ./..."
+
+# Run with context
+gwq tmux run --context test "pytest -v"
+```
+
 #### `gwq tmux kill`
 
 Terminate sessions (following existing remove patterns):
@@ -206,60 +237,68 @@ gwq tmux kill --all
 gwq tmux kill --completed
 ```
 
-## Task Queue Integration
+## Integration Examples
 
-### Automatic Session Creation During Task Execution
+### Using tmux Sessions from Other Features
 
 ```go
+// Example: Task execution with tmux
 func (w *Worker) executeTaskWithSession(task *Task) error {
-    // Create session
-    session, err := w.sessionManager.CreateSession(
-        task.ID,
-        task.WorktreePath,
-        w.buildClaudeCommand(task),
-    )
+    opts := SessionOptions{
+        Context:    "task",
+        Identifier: task.ID,
+        WorkingDir: task.WorktreePath,
+        Command:    task.Command,
+        Metadata: map[string]string{
+            "task_name": task.Name,
+            "priority":  task.Priority.String(),
+        },
+    }
+    
+    session, err := w.sessionManager.CreateSession(ctx, opts)
     if err != nil {
         return err
     }
     
-    // Record session information in task
+    // Record session information
     task.SessionID = session.ID
     task.SessionName = session.SessionName
     
-    // Monitor session
-    go w.monitorSession(session)
-    
     return nil
+}
+
+// Example: Test execution with tmux
+func runTestsInTmux(branch string, testCommand string) error {
+    opts := SessionOptions{
+        Context:    "test",
+        Identifier: branch,
+        WorkingDir: getWorktreePath(branch),
+        Command:    testCommand,
+    }
+    
+    _, err := sessionManager.CreateSession(ctx, opts)
+    return err
 }
 ```
 
-### Integration with Task Status
+### Integration with gwq Status
 
-Extend existing status command to integrate session information:
+Extend existing status command to show active tmux sessions:
 
 ```bash
 # Add session information to existing status command
 gwq status --verbose
 
 # Output:
-# BRANCH          STATUS       CHANGES           ACTIVITY     SESSION
+# BRANCH          STATUS       CHANGES           ACTIVITY     SESSIONS
 # ● main          up to date   -                2 hours ago  -
-#   feature/auth  changed      5 added, 3 mod   running      auth-impl
-#   feature/api   changed      12 added, 8 mod  running      api-dev
-#   review/auth   clean        -                completed    auth-review
+#   feature/auth  changed      5 added, 3 mod   1 hour ago   2 active
+#   feature/api   changed      12 added, 8 mod  30 min ago   1 active
+#   bugfix/login  clean        -                3 hours ago  -
 
-# Filter session information only
-gwq status --filter session
-gwq status --filter "no session"
-
-# Check session information in task command
-gwq task list --verbose
-
-# Output:
-# TASK         BRANCH        STATUS     SESSION      DURATION
-# auth-impl    feature/auth  running    attached     1h 25m
-# api-dev      feature/api   running    attached     45m
-# auth-review  review/auth   completed  detached     2h 15m
+# Filter by session activity
+gwq status --filter "has-session"
+gwq status --filter "no-session"
 ```
 
 ## tmux History Features
@@ -333,23 +372,23 @@ history_save_dir = "~/.gwq/history"
 ### Basic Usage Flow
 
 ```bash
-# Execute task (auto session creation)
-gwq task add -b feature/auth "Authentication system implementation"
+# Start a long-running process in tmux
+gwq tmux run -w feature/auth "npm run test:watch"
 
-# Check session status (status command pattern)
+# Check session status
 gwq tmux list
-gwq status --verbose  # includes session information
+gwq status --verbose  # includes session count
 
 # Attach to session to check progress
 gwq tmux attach auth
 
 # Detach from session (Ctrl+B, D)
-# → Claude Code continues execution
+# → Process continues running
 
-# Next morning, check results
+# Later, check completed sessions
 gwq tmux list --filter completed
 # Use tmux history to check output
-tmux capture-pane -t gwq-claude-auth-* -p -S -100
+tmux capture-pane -t gwq-test-auth-* -p -S -100
 ```
 
 ### History Analysis Examples
@@ -370,11 +409,11 @@ gwq tmux list --filter running
 
 ## Benefits
 
-1. **Process Persistence**: Claude Code continues execution even after terminal disconnection
+1. **Process Persistence**: Commands continue execution even after terminal disconnection
 2. **History Recording**: All output is automatically saved in tmux history
 3. **Debugging Support**: tmux history search and analysis capabilities
 4. **Monitoring Functionality**: Detailed understanding of execution status
-5. **Simple Design**: Lightweight implementation using native tmux features
+5. **Extensible Design**: Can be used by any gwq feature requiring persistent processes
 
 ## Limitations
 
@@ -384,4 +423,4 @@ gwq tmux list --filter running
 
 ## Summary
 
-This tmux session management feature significantly improves the stability and monitorability of Claude Code execution. By focusing purely on process management and using tmux's native history features without complex layout management, it provides a simple and reliable system.
+This tmux session management feature provides a generic foundation for running persistent processes in gwq. By focusing purely on process management and using tmux's native history features, it provides a simple and reliable system that can be used by various gwq features.
