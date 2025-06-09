@@ -48,7 +48,6 @@ func Init() error {
 		"/": "-",
 		":": "-",
 	})
-	viper.SetDefault("ui.color", true)
 	viper.SetDefault("ui.icons", true)
 	viper.SetDefault("ui.tilde_home", true)
 

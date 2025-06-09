@@ -116,7 +116,6 @@ func TestConfigDefaults(t *testing.T) {
 			},
 		},
 		UI: UIConfig{
-			Color: true,
 			Icons: true,
 		},
 	}
@@ -151,9 +150,6 @@ func TestConfigDefaults(t *testing.T) {
 	}
 	if cfg.Naming.SanitizeChars[":"] != "-" {
 		t.Error("Default SanitizeChars should replace : with -")
-	}
-	if !cfg.UI.Color {
-		t.Error("Default Color should be true")
 	}
 	if !cfg.UI.Icons {
 		t.Error("Default Icons should be true")
