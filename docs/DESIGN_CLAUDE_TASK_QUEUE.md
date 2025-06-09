@@ -825,6 +825,7 @@ default_config:
   auto_review: true
   max_iterations: 3
   worktree_base: ".worktrees"        # Relative to repository root
+  config_dir: "~/.config/gwq/claude" # Configuration and state files (XDG compliant)
   dependency_policy: "wait"          # Default dependency handling
   priority: 50                       # Default priority (normal)
 
@@ -1089,6 +1090,7 @@ skip_permissions = true                # ALWAYS true for automation
 timeout = "2h"                         # Default timeout
 max_iterations = 3                     # Default max iterations
 worktree_base = ".worktrees"           # Relative to repository root
+config_dir = "~/.config/gwq/claude"    # Configuration and state files (XDG compliant)
 
 # Additional arguments passed to Claude Code
 additional_args = [
@@ -1143,12 +1145,29 @@ auto_fix = true
 max_fix_attempts = 2
 ```
 
+### Directory Structure (XDG Base Directory Specification)
+
+```
+~/.config/gwq/claude/
+├── queue/                    # Task queue files
+├── history/                  # tmux history backups (optional)
+├── logs/                     # Application logs
+└── cache/                    # Temporary cache files
+
+# Per-repository
+{repository}/.worktrees/
+├── feature-auth-abc123/      # Task worktrees
+├── feature-api-def456/
+└── ...
+```
+
 ### Key Configuration Notes
 
 - **`skip_permissions = true`**: REQUIRED - always passes `--dangerously-skip-permissions`
 - **`executable = "claude"`**: Path to Claude Code executable
 - **`additional_args`**: Extra arguments for specific needs (optional)
-- **Worktree isolation**: Each task gets dedicated worktree
+- **XDG compliance**: Uses `~/.config/gwq/` for configuration and state
+- **Worktree isolation**: Each task gets dedicated worktree in repository
 - **Dependency limits**: Max 5-level depth prevents complex chains
 
 ## Usage Examples
