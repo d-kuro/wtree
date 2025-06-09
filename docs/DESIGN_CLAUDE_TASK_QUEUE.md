@@ -913,6 +913,244 @@ tasks:
       max_iterations: 5
 ```
 
+## Claude Code Integration
+
+### Claude Agent Implementation
+
+```go
+type ClaudeAgent struct {
+    config      *ClaudeConfig
+    sessionMgr  *SessionManager
+}
+
+type ClaudeConfig struct {
+    Executable           string   `toml:"executable"`
+    SkipPermissions     bool     `toml:"skip_permissions"`      // Always true for automation
+    Timeout             string   `toml:"timeout"`
+    MaxIterations       int      `toml:"max_iterations"`
+    WorktreeBase        string   `toml:"worktree_base"`
+    AdditionalArgs      []string `toml:"additional_args"`
+}
+
+func (c *ClaudeAgent) Execute(ctx context.Context, task *Task) (*TaskResult, error) {
+    // Ensure worktree exists for the task
+    if err := c.ensureWorktree(task); err != nil {
+        return nil, fmt.Errorf("failed to prepare worktree: %w", err)
+    }
+    
+    // Build Claude Code command with automation-friendly options
+    cmd := c.buildClaudeCommand(task)
+    
+    // Create tmux session for persistent execution in worktree
+    session, err := c.sessionMgr.CreateSession(ctx, SessionOptions{
+        Context:    "claude",
+        Identifier: fmt.Sprintf("%s-%s", task.Branch, task.ID),
+        WorkingDir: task.WorktreePath,  // Execute Claude inside worktree
+        Command:    cmd,
+        Metadata: map[string]string{
+            "task_id":      task.ID,
+            "task_name":    task.Name,
+            "branch":       task.Branch,
+            "worktree":     task.WorktreePath,
+            "repo_root":    task.RepositoryRoot,
+        },
+    })
+    if err != nil {
+        return nil, fmt.Errorf("failed to create session: %w", err)
+    }
+    
+    // Monitor execution and handle results
+    result, err := c.monitorExecution(ctx, session, task)
+    if err != nil {
+        return nil, err
+    }
+    
+    return result, nil
+}
+
+func (c *ClaudeAgent) buildClaudeCommand(task *Task) string {
+    // Core automation options (always included)
+    args := []string{
+        c.config.Executable,
+        "--dangerously-skip-permissions",  // REQUIRED for automation
+    }
+    
+    // Add task-specific options
+    if task.Config.Timeout != "" {
+        args = append(args, "--timeout", task.Config.Timeout)
+    } else if c.config.Timeout != "" {
+        args = append(args, "--timeout", c.config.Timeout)
+    }
+    
+    if task.Config.MaxIterations > 0 {
+        args = append(args, "--max-iterations", strconv.Itoa(task.Config.MaxIterations))
+    } else if c.config.MaxIterations > 0 {
+        args = append(args, "--max-iterations", strconv.Itoa(c.config.MaxIterations))
+    }
+    
+    // Add any additional configured arguments
+    args = append(args, c.config.AdditionalArgs...)
+    
+    // Build comprehensive task prompt
+    prompt := c.buildTaskPrompt(task)
+    args = append(args, "--task", fmt.Sprintf("\"%s\"", prompt))
+    
+    return strings.Join(args, " ")
+}
+
+func (c *ClaudeAgent) buildTaskPrompt(task *Task) string {
+    var prompt strings.Builder
+    
+    prompt.WriteString(fmt.Sprintf("# Task: %s\n\n", task.Name))
+    
+    if task.Context != "" {
+        prompt.WriteString(fmt.Sprintf("## Context\n%s\n\n", task.Context))
+    }
+    
+    if len(task.Objectives) > 0 {
+        prompt.WriteString("## Objectives\n")
+        for _, obj := range task.Objectives {
+            prompt.WriteString(fmt.Sprintf("- %s\n", obj))
+        }
+        prompt.WriteString("\n")
+    }
+    
+    if task.Instructions != "" {
+        prompt.WriteString(fmt.Sprintf("## Instructions\n%s\n\n", task.Instructions))
+    }
+    
+    if len(task.Constraints) > 0 {
+        prompt.WriteString("## Constraints\n")
+        for _, constraint := range task.Constraints {
+            prompt.WriteString(fmt.Sprintf("- %s\n", constraint))
+        }
+        prompt.WriteString("\n")
+    }
+    
+    if len(task.FilesToFocus) > 0 {
+        prompt.WriteString("## Files to Focus On\n")
+        for _, file := range task.FilesToFocus {
+            prompt.WriteString(fmt.Sprintf("- %s\n", file))
+        }
+        prompt.WriteString("\n")
+    }
+    
+    if len(task.VerificationCommands) > 0 {
+        prompt.WriteString("## Verification Commands\n")
+        prompt.WriteString("Please run these commands to verify your work:\n")
+        for _, cmd := range task.VerificationCommands {
+            prompt.WriteString(fmt.Sprintf("- `%s`\n", cmd))
+        }
+        prompt.WriteString("\n")
+    }
+    
+    prompt.WriteString("## Success Criteria\n")
+    prompt.WriteString("Task is complete when:\n")
+    prompt.WriteString("- All objectives are met\n")
+    prompt.WriteString("- All verification commands pass\n")
+    prompt.WriteString("- Code follows project conventions\n")
+    prompt.WriteString("- No security issues introduced\n")
+    
+    return prompt.String()
+}
+
+func (c *ClaudeAgent) ensureWorktree(task *Task) error {
+    // Check if worktree already exists
+    if _, err := os.Stat(task.WorktreePath); err == nil {
+        return nil // Worktree already exists
+    }
+    
+    // Create new worktree from repository root
+    cmd := exec.Command("git", "worktree", "add", task.WorktreePath, task.Branch)
+    cmd.Dir = task.RepositoryRoot
+    
+    if err := cmd.Run(); err != nil {
+        // If branch doesn't exist, create it
+        createBranchCmd := exec.Command("git", "worktree", "add", "-b", task.Branch, task.WorktreePath)
+        createBranchCmd.Dir = task.RepositoryRoot
+        if err := createBranchCmd.Run(); err != nil {
+            return fmt.Errorf("failed to create worktree with new branch: %w", err)
+        }
+    }
+    
+    return nil
+}
+```
+
+## Configuration
+
+### Claude Code Configuration
+
+```toml
+[claude]
+# Claude Code executable and core options
+executable = "claude"
+skip_permissions = true                # ALWAYS true for automation
+timeout = "2h"                         # Default timeout
+max_iterations = 3                     # Default max iterations
+worktree_base = ".worktrees"           # Relative to repository root
+
+# Additional arguments passed to Claude Code
+additional_args = [
+    "--json-output",                   # For structured result parsing (optional)
+]
+
+# Global parallelism control
+max_parallel = 3
+max_development_tasks = 2
+max_review_tasks = 1
+
+# Resource limits
+max_cpu_percent = 80
+max_memory_mb = 4096
+
+[claude.worktree]
+# Git worktree settings
+auto_create_worktree = true
+worktree_naming = "{branch}-{task_id}" 
+cleanup_on_completion = false
+require_clean_repo = false
+validate_branch_exists = true
+
+[claude.queue]
+# Task queue management
+max_queue_size = 50
+queue_dir = "~/.gwq/claude/queue"
+
+# Priority processing
+priority_boost_after = "1h"           # Boost priority of waiting tasks
+starvation_prevention = true           # Prevent low priority tasks from starving
+
+# Dependency processing
+dependency_timeout = "30m"             # Max time to wait for dependencies
+max_dependency_depth = 5               # Max depth of dependency chains
+validate_dependencies = true           # Validate dependency graph on task creation
+
+# Task validation
+validate_task_files = true
+required_fields = ["objectives", "instructions", "verification_commands"]
+
+[claude.tmux]
+# tmux session configuration
+auto_create_session = true
+session_prefix = "gwq-claude"
+history_limit = 50000
+
+[claude.review]
+# Automatic review configuration
+enabled = true
+auto_fix = true
+max_fix_attempts = 2
+```
+
+### Key Configuration Notes
+
+- **`skip_permissions = true`**: REQUIRED - always passes `--dangerously-skip-permissions`
+- **`executable = "claude"`**: Path to Claude Code executable
+- **`additional_args`**: Extra arguments for specific needs (optional)
+- **Worktree isolation**: Each task gets dedicated worktree
+- **Dependency limits**: Max 5-level depth prevents complex chains
+
 ## Usage Examples
 
 ### Daily Development Flow
