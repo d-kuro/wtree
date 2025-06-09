@@ -1,29 +1,29 @@
-# tmux セッション管理設計
+# tmux Session Management Design
 
-## 概要
+## Overview
 
-Claude Code実行時のセッション管理とログ保存に特化したtmux連携機能の設計です。複雑なレイアウト管理は行わず、Claude Codeのプロセス管理とログ記録に焦点を当てます。
+Design for tmux integration focused on session management and log saving during Claude Code execution. This design focuses on Claude Code process management and log recording without complex layout management.
 
-## 基本コンセプト
+## Core Concepts
 
-### セッション管理の目的
+### Session Management Goals
 
-1. **プロセス永続化**: Claude Code実行をターミナル接続に依存させない
-2. **ログ保存**: すべてのClaude Code出力を自動的に記録
-3. **監視機能**: 実行中のClaude Codeインスタンスの状態確認
-4. **デタッチ/アタッチ**: ターミナルを閉じても処理継続
+1. **Process Persistence**: Make Claude Code execution independent of terminal connections
+2. **Log Preservation**: Automatically record all Claude Code output
+3. **Monitoring**: Monitor the status of running Claude Code instances
+4. **Detach/Attach**: Continue processing even when terminal is closed
 
-### セッション命名規則
+### Session Naming Convention
 
 ```
 gwq-claude-{task-id}-{timestamp}
 ```
 
-例：
+Examples:
 - `gwq-claude-abc123-20240115103045`
 - `gwq-claude-def456-20240115110230`
 
-## アーキテクチャ
+## Architecture
 
 ### tmux Session Manager
 
@@ -56,21 +56,21 @@ const (
 )
 ```
 
-## 基本機能
+## Core Features
 
-### セッション作成
+### Session Creation
 
-Claude Code実行時に自動的にtmuxセッションを作成：
+Automatically create tmux sessions when executing Claude Code:
 
 ```go
 func (s *SessionManager) CreateSession(taskID, worktreePath, command string) (*ClaudeSession, error) {
     sessionName := fmt.Sprintf("gwq-claude-%s-%s", taskID, time.Now().Format("20060102150405"))
     logFile := filepath.Join(s.config.LogDir, fmt.Sprintf("%s.log", sessionName))
     
-    // tmuxセッション作成
+    // Create tmux session
     tmuxCmd := fmt.Sprintf("tmux new-session -d -s %s -c %s", sessionName, worktreePath)
     
-    // Claude Code実行（ログ付き）
+    // Execute Claude Code with logging
     claudeCmd := fmt.Sprintf("%s 2>&1 | tee %s", command, logFile)
     
     session := &ClaudeSession{
@@ -88,7 +88,7 @@ func (s *SessionManager) CreateSession(taskID, worktreePath, command string) (*C
 }
 ```
 
-### ログ管理
+### Log Management
 
 ```go
 type SessionLogger struct {
@@ -98,7 +98,7 @@ type SessionLogger struct {
 func (l *SessionLogger) CreateLogFile(sessionName string) (string, error) {
     logFile := filepath.Join(l.baseDir, fmt.Sprintf("%s.log", sessionName))
     
-    // ログファイル作成とローテーション設定
+    // Create log file and setup rotation
     file, err := os.Create(logFile)
     if err != nil {
         return "", err
@@ -110,20 +110,20 @@ func (l *SessionLogger) CreateLogFile(sessionName string) (string, error) {
 
 func (l *SessionLogger) TailLog(sessionName string, lines int) ([]string, error) {
     logFile := filepath.Join(l.baseDir, fmt.Sprintf("%s.log", sessionName))
-    // tail実装
+    // tail implementation
 }
 ```
 
-## コマンド設計
+## Command Design
 
-### gwq session サブコマンド
+### gwq session subcommands
 
 #### `gwq session list`
 
-実行中のClaude Codeセッション一覧（既存のstatusコマンドパターンに準拠）：
+List running Claude Code sessions (following existing status command patterns):
 
 ```bash
-# セッション一覧（シンプルなテーブル形式）
+# Session list (simple table format)
 gwq session list
 
 # Output:
@@ -132,104 +132,104 @@ gwq session list
 #   api-dev     feature/api     running    45m
 #   auth-review review/auth     completed  2h 15m
 
-# 詳細情報
+# Detailed information
 gwq session list --verbose
 
-# JSON出力
+# JSON output
 gwq session list --json
 
-# CSV出力
+# CSV output
 gwq session list --csv
 
-# リアルタイム監視
+# Real-time monitoring
 gwq session list --watch
 
-# ステータスフィルタ
+# Status filter
 gwq session list --filter running
 gwq session list --filter completed
 
-# ソート
+# Sort
 gwq session list --sort duration
 gwq session list --sort task
 ```
 
 #### `gwq session attach`
 
-セッションにアタッチ（既存のget/execパターンに準拠）：
+Attach to sessions (following existing get/exec patterns):
 
 ```bash
-# パターンマッチでアタッチ
+# Attach with pattern matching
 gwq session attach auth
 
-# 完全一致でアタッチ
+# Attach with exact match
 gwq session attach auth-impl
 
-# 複数マッチ時は自動でfuzzy finder起動
-gwq session attach feature  # feature/* がマッチする場合
+# Auto fuzzy finder when multiple matches
+gwq session attach feature  # when feature/* matches
 
-# 引数なしで全セッションからfuzzy finder選択
+# Fuzzy finder selection for all sessions without arguments
 gwq session attach
 
-# fuzzy finderを明示的に使用
+# Explicit fuzzy finder usage
 gwq session attach -i
 ```
 
 #### `gwq session logs`
 
-ログの表示：
+Display logs:
 
 ```bash
-# パターンマッチでログ表示
+# Display logs with pattern matching
 gwq session logs auth
 
-# 複数マッチ時は自動でfuzzy finder
+# Auto fuzzy finder when multiple matches
 gwq session logs feature
 
-# 引数なしでfuzzy finder選択
+# Fuzzy finder selection without arguments
 gwq session logs
 
-# リアルタイムログ（tailに相当）
+# Real-time logs (equivalent to tail)
 gwq session logs auth -f
 gwq session logs auth --follow
 
-# 最後のN行表示
+# Display last N lines
 gwq session logs auth --tail 100
 
-# 行数制限なし（全ログ表示）
+# Display all logs (no line limit)
 gwq session logs auth --all
 ```
 
 #### `gwq session kill`
 
-セッション終了（既存のremoveパターンに準拠）：
+Terminate sessions (following existing remove patterns):
 
 ```bash
-# パターンマッチで終了
+# Terminate with pattern matching
 gwq session kill auth
 
-# 複数マッチ時は自動でfuzzy finder
+# Auto fuzzy finder when multiple matches
 gwq session kill feature
 
-# 引数なしでfuzzy finder選択
+# Fuzzy finder selection without arguments
 gwq session kill
 
-# fuzzy finderを明示的に使用
+# Explicit fuzzy finder usage
 gwq session kill -i
 
-# 全セッション終了（確認付き）
+# Terminate all sessions (with confirmation)
 gwq session kill --all
 
-# 完了済みセッションのみクリーンアップ
+# Cleanup only completed sessions
 gwq session kill --completed
 ```
 
-## タスクキューとの統合
+## Task Queue Integration
 
-### タスク実行時の自動セッション作成
+### Automatic Session Creation During Task Execution
 
 ```go
 func (w *Worker) executeTaskWithSession(task *Task) error {
-    // セッション作成
+    // Create session
     session, err := w.sessionManager.CreateSession(
         task.ID,
         task.WorktreePath,
@@ -239,23 +239,23 @@ func (w *Worker) executeTaskWithSession(task *Task) error {
         return err
     }
     
-    // タスクにセッション情報を記録
+    // Record session information in task
     task.SessionID = session.ID
     task.SessionName = session.SessionName
     
-    // セッション監視
+    // Monitor session
     go w.monitorSession(session)
     
     return nil
 }
 ```
 
-### タスクステータスとの連携
+### Integration with Task Status
 
-既存のstatusコマンドを拡張してセッション情報を統合：
+Extend existing status command to integrate session information:
 
 ```bash
-# 既存のstatusコマンドにセッション情報を追加
+# Add session information to existing status command
 gwq status --verbose
 
 # Output:
@@ -265,11 +265,11 @@ gwq status --verbose
 #   feature/api   changed      12 added, 8 mod  running      api-dev
 #   review/auth   clean        -                completed    auth-review
 
-# セッション情報のみフィルタ
+# Filter session information only
 gwq status --filter session
 gwq status --filter "no session"
 
-# タスクコマンドでのセッション情報確認
+# Check session information in task command
 gwq task list --verbose
 
 # Output:
@@ -279,9 +279,9 @@ gwq task list --verbose
 # auth-review  review/auth   completed  detached     2h 15m
 ```
 
-## ログ管理機能
+## Log Management Features
 
-### ログファイル構造
+### Log File Structure
 
 ```
 ~/.gwq/logs/sessions/
@@ -290,67 +290,67 @@ gwq task list --verbose
 └── gwq-claude-ghi789-20240115120015.log
 ```
 
-### ログローテーション
+### Log Rotation
 
 ```toml
 [session.logging]
-# ログディレクトリ
+# Log directory
 log_dir = "~/.gwq/logs/sessions"
 
-# ログローテーション
+# Log rotation
 max_log_files = 100
 log_retention_days = 30
 max_log_size_mb = 100
 
-# ログレベル
+# Log level
 log_level = "info"
 ```
 
-### ログ検索
+### Log Search
 
-既存のgrepパターンに準拠したログ検索：
+Following existing grep patterns for log search:
 
 ```bash
-# 全セッションでキーワード検索
+# Search keywords across all sessions
 gwq session logs --grep "error"
 
-# 特定セッションでパターン検索
+# Pattern search in specific session
 gwq session logs auth --grep "authentication.*failed"
 
-# 複数キーワード検索
+# Multiple keyword search
 gwq session logs --grep "error|failed|exception"
 
-# 時間範囲指定
+# Time range specification
 gwq session logs auth --since "1h"
 gwq session logs auth --since "2024-01-15 10:00"
 
-# ログレベルフィルタ
+# Log level filter
 gwq session logs auth --filter error
 gwq session logs auth --filter warn
 ```
 
-## 設定
+## Configuration
 
-### tmuxセッション設定
+### tmux Session Configuration
 
 ```toml
 [session]
-# tmux連携を有効化
+# Enable tmux integration
 enabled = true
 
-# セッション自動作成
+# Auto session creation
 auto_create_session = true
 
-# セッション作成時の動作
+# Behavior on session creation
 detach_on_create = true
 auto_cleanup_completed = true
 
 [session.tmux]
-# tmux設定
+# tmux configuration
 tmux_command = "tmux"
 default_shell = "/bin/bash"
 
-# セッション設定
+# Session configuration
 session_timeout = "24h"
 keep_alive = true
 
@@ -360,62 +360,62 @@ max_log_files = 100
 log_retention_days = 30
 ```
 
-## 使用例
+## Usage Examples
 
-### 基本的な使用フロー
+### Basic Usage Flow
 
 ```bash
-# タスク実行（自動でセッション作成）
-gwq task add -b feature/auth "認証システム実装"
+# Execute task (auto session creation)
+gwq task add -b feature/auth "Authentication system implementation"
 
-# セッション状態確認（statusコマンドパターン）
+# Check session status (status command pattern)
 gwq session list
-gwq status --verbose  # セッション情報含む
+gwq status --verbose  # includes session information
 
-# ログ確認（パターンマッチ）
+# Check logs (pattern matching)
 gwq session logs auth --follow
 
-# セッションにアタッチして進捗確認
+# Attach to session to check progress
 gwq session attach auth
 
-# セッションからデタッチ（Ctrl+B, D）
-# → Claude Codeは継続実行
+# Detach from session (Ctrl+B, D)
+# → Claude Code continues execution
 
-# 翌朝、結果確認
+# Next morning, check results
 gwq session list --filter completed
 gwq session logs auth --tail 50
 ```
 
-### ログ分析例
+### Log Analysis Examples
 
 ```bash
-# エラーが発生したセッションを特定
+# Identify sessions with errors
 gwq session logs --grep "error|failed|exception"
 
-# 特定のファイルに関する変更を追跡
+# Track changes related to specific files
 gwq session logs --grep "auth.go"
 
-# 長時間実行されているタスクの特定
+# Identify long-running tasks
 gwq session list --sort duration
 
-# 実行中のセッションのみ表示
+# Display only running sessions
 gwq session list --filter running
 ```
 
-## メリット
+## Benefits
 
-1. **プロセス永続化**: ターミナル切断でもClaude Code継続実行
-2. **完全なログ記録**: すべての出力が自動保存される
-3. **監視機能**: 実行状況の詳細な把握
-4. **デバッグ支援**: ログ検索・分析機能
-5. **シンプル設計**: 最小限の機能に特化した軽量実装
+1. **Process Persistence**: Claude Code continues execution even after terminal disconnection
+2. **Complete Log Recording**: All output is automatically saved
+3. **Debugging Support**: Log search and analysis capabilities
+4. **Monitoring Functionality**: Detailed understanding of execution status
+5. **Simple Design**: Lightweight implementation focused on minimal features
 
-## 制限事項
+## Limitations
 
-1. tmuxがインストールされている環境でのみ動作
-2. セッション数が多くなるとリソース消費が増加
-3. ログファイルのディスク容量管理が必要
+1. Works only in environments where tmux is installed
+2. Resource consumption increases as the number of sessions grows
+3. Disk space management for log files is required
 
-## まとめ
+## Summary
 
-このtmuxセッション管理機能により、Claude Code実行の安定性と監視性が大幅に向上します。複雑なレイアウト管理は行わず、純粋にプロセス管理とログ記録に特化することで、シンプルで信頼性の高いシステムを実現できます。
+This tmux session management feature significantly improves the stability and monitorability of Claude Code execution. By focusing purely on process management and log recording without complex layout management, it provides a simple and reliable system.

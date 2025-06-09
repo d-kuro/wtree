@@ -1,21 +1,21 @@
-# Claude Task Queue 設計
+# Claude Task Queue Design
 
-## 概要
+## Overview
 
-Claude Code前提の自動タスクキューシステムの設計です。開発者が寝ている時間などのアイドルタイムを活用して、自動的にClaude Codeでタスクを実行し、レビューまで完了する機能を提供します。
+Design for an automated task queue system with Claude Code integration. This system enables developers to leverage idle time (such as during sleep) to automatically execute tasks with Claude Code and complete code reviews.
 
-将来的には他のAIエージェント（Cursor、GitHub Copilot等）にも対応できる拡張可能な設計とします。
+The design is Claude Code-focused while maintaining extensibility for future AI agents (Cursor, GitHub Copilot, etc.).
 
-## 基本コンセプト
+## Core Concepts
 
-### Claude Code前提の設計
+### Claude Code-Focused Design
 
-- **専用コマンド**: `gwq claude` サブコマンドで全機能を提供
-- **自動レビュー**: タスク完了時に自動的にコードレビューを実行
-- **セッション管理**: tmuxを使用したプロセス永続化
-- **並列制御**: システム全体でのClaude Code並列数制御
+- **Dedicated Commands**: All functionality provided through `gwq claude` subcommands
+- **Automatic Review**: Automatically execute code reviews upon task completion
+- **Session Management**: Process persistence using tmux
+- **Parallelism Control**: System-wide Claude Code parallel execution control
 
-### 将来的な拡張性
+### Future Extensibility
 
 ```go
 // Agent interface for future extensibility
@@ -37,9 +37,9 @@ type CursorAgent struct { /* ... */ }
 type CopilotAgent struct { /* ... */ }
 ```
 
-## アーキテクチャ
+## Architecture
 
-### 全体構成
+### Overall Structure
 
 ```mermaid
 graph TD
@@ -60,7 +60,7 @@ graph TD
     H --> M[Log Files]
 ```
 
-### データモデル
+### Data Model
 
 ```go
 type Task struct {
@@ -111,21 +111,21 @@ type ReviewResult struct {
 }
 ```
 
-## コマンド設計
+## Command Design
 
-### gwq claude サブコマンド
+### gwq claude subcommands
 
 #### `gwq claude task`
 
-タスク管理機能（既存パターンに準拠）：
+Task management functionality (following existing patterns):
 
 ```bash
-# タスク追加
-gwq claude task add -b feature/auth "認証システムの実装"
-gwq claude task add -b feature/api "REST APIの実装" -p high
-gwq claude task add -f tasks.yaml  # YAML一括登録
+# Add tasks
+gwq claude task add -b feature/auth "Authentication system implementation"
+gwq claude task add -b feature/api "REST API implementation" -p high
+gwq claude task add -f tasks.yaml  # Batch registration from YAML
 
-# タスク一覧（statusコマンドパターン）
+# Task list (status command pattern)
 gwq claude task list
 
 # Output:
@@ -134,34 +134,34 @@ gwq claude task list
 #   api-dev     feature/api   pending     high       -
 #   bug-fix     bugfix/login  completed   urgent     2h 15m
 
-# 詳細情報
+# Detailed information
 gwq claude task list --verbose
 gwq claude task list --json
 gwq claude task list --csv
 
-# フィルタとソート
+# Filter and sort
 gwq claude task list --filter running
 gwq claude task list --sort priority --reverse
 
-# リアルタイム監視
+# Real-time monitoring
 gwq claude task list --watch
 
-# 特定タスクの詳細
+# Specific task details
 gwq claude task show auth-impl
-gwq claude task show auth  # パターンマッチ
-gwq claude task show       # fuzzy finder
+gwq claude task show auth  # Pattern matching
+gwq claude task show       # Fuzzy finder
 ```
 
 #### `gwq claude worker`
 
-ワーカー管理：
+Worker management:
 
 ```bash
-# ワーカー開始
+# Start worker
 gwq claude worker start
 gwq claude worker start --parallel 3
 
-# ワーカー状態確認
+# Check worker status
 gwq claude worker status
 
 # Output:
@@ -170,40 +170,40 @@ gwq claude worker status
 # Queue: 5 pending
 # Sessions: 2 running, 1 reviewing
 
-# ワーカー停止
+# Stop worker
 gwq claude worker stop
 
-# 設定確認
+# Check configuration
 gwq claude worker config
 ```
 
 #### `gwq claude session`
 
-セッション管理（tmux統合）：
+Session management (tmux integration):
 
 ```bash
-# セッション一覧
+# Session list
 gwq claude session list
 
-# セッションにアタッチ（パターンマッチ）
+# Attach to session (pattern matching)
 gwq claude session attach auth
-gwq claude session attach        # fuzzy finder
+gwq claude session attach        # Fuzzy finder
 
-# ログ表示
+# Display logs
 gwq claude session logs auth --follow
 gwq claude session logs --grep "error"
 
-# セッション終了
+# Terminate session
 gwq claude session kill auth
 gwq claude session kill --completed
 ```
 
 #### `gwq claude review`
 
-レビュー機能：
+Review functionality:
 
 ```bash
-# レビュー結果確認
+# Check review results
 gwq claude review show auth-impl
 
 # Output:
@@ -217,30 +217,30 @@ gwq claude review show auth-impl
 # [WARN]  auth.go:78 - Missing error handling
 # [INFO]  auth_test.go:23 - Test coverage improvement
 
-# レビュー一覧
+# Review list
 gwq claude review list
 gwq claude review list --filter error
 
-# 手動レビュー実行
+# Manual review execution
 gwq claude review run auth-impl
 ```
 
 #### `gwq claude start/stop`
 
-直接実行コマンド：
+Direct execution commands:
 
 ```bash
-# 現在のworktreeでClaude起動
+# Start Claude in current worktree
 gwq claude start
-gwq claude start --task "バグを修正してください"
+gwq claude start --task "Please fix bugs"
 
-# パターンマッチでworktree指定
-gwq claude start -w feature/auth --task "認証システム実装"
+# Specify worktree with pattern matching
+gwq claude start -w feature/auth --task "Authentication system implementation"
 
-# バックグラウンド実行
-gwq claude start --background --task "テスト追加"
+# Background execution
+gwq claude start --background --task "Add tests"
 
-# 実行中のClaude一覧
+# List running Claude instances
 gwq claude list
 
 # Output:
@@ -248,14 +248,14 @@ gwq claude list
 # auth-impl    feature/auth    running    45m        attached
 # api-dev      feature/api     idle       1h 20m     detached
 
-# Claude停止
+# Stop Claude
 gwq claude stop auth
 gwq claude stop --all
 ```
 
-## 自動レビュー機能
+## Automatic Review Feature
 
-### レビューフロー
+### Review Flow
 
 ```mermaid
 sequenceDiagram
@@ -278,37 +278,37 @@ sequenceDiagram
     TM-->>TM: Task Finalized
 ```
 
-### レビュー設定
+### Review Configuration
 
 ```toml
 [claude.review]
-# 自動レビューを有効化
+# Enable automatic review
 enabled = true
 
-# レビュー対象
+# Review targets
 review_patterns = ["*.go", "*.js", "*.ts", "*.py"]
 exclude_patterns = ["*_test.go", "vendor/*"]
 
-# レビュープロンプト
+# Review prompt
 review_prompt = """
-以下の点を重点的にレビューしてください：
-1. セキュリティの脆弱性
-2. バグや潜在的な問題
-3. パフォーマンスの懸念
-4. コードの可読性
-5. テスト不足
+Please focus on reviewing the following points:
+1. Security vulnerabilities
+2. Bugs and potential issues
+3. Performance concerns
+4. Code readability
+5. Missing tests
 
-修正が必要な場合は自動で修正してください。
+If fixes are needed, please apply them automatically.
 """
 
-# 自動修正
+# Automatic fixes
 auto_fix = true
 max_fix_attempts = 3
 ```
 
-## 並列制御とリソース管理
+## Parallelism Control and Resource Management
 
-### グローバル並列数制御
+### Global Parallelism Control
 
 ```go
 type ResourceManager struct {
@@ -335,61 +335,61 @@ func (r *ResourceManager) AcquireSlot(taskType TaskType) (*Slot, error) {
 }
 ```
 
-### 設定
+### Configuration
 
 ```toml
 [claude]
-# Claude Code実行ファイル
+# Claude Code executable
 executable = "claude"
 default_args = []
 
-# グローバル並列制御
+# Global parallelism control
 max_parallel = 5
 max_development_tasks = 3
 max_review_tasks = 2
 
-# リソース制限
+# Resource limits
 max_cpu_percent = 80
 max_memory_mb = 4096
 task_timeout = "2h"
 
 [claude.queue]
-# キュー管理
+# Queue management
 max_queue_size = 100
 queue_dir = "~/.gwq/claude/queue"
 
-# 優先度処理
+# Priority processing
 priority_boost_after = "1h"
 starvation_prevention = true
 
 [claude.session]
-# tmuxセッション設定
+# tmux session configuration
 auto_create_session = true
 session_prefix = "gwq-claude"
 log_dir = "~/.gwq/claude/logs"
 ```
 
-## エージェント抽象化設計
+## Agent Abstraction Design
 
 ### Agent Interface
 
 ```go
-// 将来的な拡張のためのAgent抽象化
+// Agent abstraction for future extensions
 type Agent interface {
-    // 基本情報
+    // Basic information
     Name() string
     Version() string
     Capabilities() []Capability
     
-    // タスク実行
+    // Task execution
     Execute(ctx context.Context, task *Task) (*TaskResult, error)
     Review(ctx context.Context, task *Task) (*ReviewResult, error)
     
-    // ヘルスチェック
+    // Health check
     HealthCheck() error
     IsAvailable() bool
     
-    // セッション管理
+    // Session management
     CreateSession(task *Task) (*Session, error)
     AttachSession(sessionID string) error
 }
@@ -404,7 +404,7 @@ const (
     CapabilityDocumentation  Capability = "documentation"
 )
 
-// Claude Code実装
+// Claude Code implementation
 type ClaudeAgent struct {
     config      *ClaudeConfig
     sessionMgr  *SessionManager
@@ -423,32 +423,32 @@ func (c *ClaudeAgent) Capabilities() []Capability {
 }
 ```
 
-### 将来的な拡張例
+### Future Extension Examples
 
 ```bash
-# 将来的に他のエージェントも同様に使用可能
-gwq cursor task add -b feature/ui "UI実装"
-gwq copilot task add -b feature/api "API実装"
+# Future support for other agents
+gwq cursor task add -b feature/ui "UI implementation"
+gwq copilot task add -b feature/api "API implementation"
 
-# エージェント固有の機能
+# Agent-specific features
 gwq claude review run task-123
 gwq cursor pair-programming start
 gwq copilot suggest improvements
 
-# 統合ビュー
+# Integrated view
 gwq agent list
 gwq agent status --all
 ```
 
-## 統合とワークフロー
+## Integration and Workflow
 
-### 既存コマンドとの統合
+### Integration with Existing Commands
 
 ```bash
-# worktree作成時にタスクも作成
-gwq add -b feature/auth --with-task "認証システム実装"
+# Create task when creating worktree
+gwq add -b feature/auth --with-task "Authentication system implementation"
 
-# statusコマンドでClaude情報も表示
+# Display Claude information in status command
 gwq status --verbose
 
 # Output:
@@ -458,98 +458,98 @@ gwq status --verbose
 #   feature/api   clean     -             pending       api-dev (queued)
 ```
 
-### タスクファイル形式
+### Task File Format
 
 ```yaml
 # tasks.yaml
 tasks:
-  - name: "認証システム実装"
+  - name: "Authentication system implementation"
     branch: "feature/auth"
     priority: high
     description: |
-      JWT認証システムの完全実装:
-      - ログイン/ログアウト機能
-      - トークン管理
-      - 権限チェック
-      - テスト追加
+      Complete JWT authentication system implementation:
+      - Login/logout functionality
+      - Token management
+      - Permission checks
+      - Add tests
     with_review: true
     
-  - name: "API仕様実装"
+  - name: "API specification implementation"
     branch: "feature/api"  
     priority: normal
     description: |
-      OpenAPI仕様に基づくREST API実装:
-      - エンドポイント作成
-      - バリデーション追加
-      - エラーハンドリング
-      - ドキュメント更新
+      REST API implementation based on OpenAPI specification:
+      - Create endpoints
+      - Add validation
+      - Error handling
+      - Update documentation
     with_review: true
 ```
 
-## 使用例
+## Usage Examples
 
-### 日常的な開発フロー
+### Daily Development Flow
 
 ```bash
-# 朝の作業準備
-gwq claude task add -b feature/auth "認証システム実装" 
-gwq claude task add -b feature/api "API実装" -p high
+# Morning work preparation
+gwq claude task add -b feature/auth "Authentication system implementation" 
+gwq claude task add -b feature/api "API implementation" -p high
 gwq claude task add -f evening-tasks.yaml
 
-# ワーカー開始
+# Start worker
 gwq claude worker start --parallel 2
 
-# 作業状況確認
+# Check work status
 gwq claude task list --watch
 
-# セッション監視
+# Monitor sessions
 gwq claude session list
 
-# 夕方、レビュー結果確認
+# Evening, check review results
 gwq claude review list
 gwq claude review show auth --verbose
 
-# 翌朝、完了タスク確認
+# Next morning, check completed tasks
 gwq claude task list --filter completed
 gwq status --verbose
 ```
 
-### エラー対応フロー
+### Error Handling Flow
 
 ```bash
-# 失敗タスクの確認
+# Check failed tasks
 gwq claude task list --filter failed
 
-# ログ確認
+# Check logs
 gwq claude session logs auth-impl --grep "error"
 
-# 手動で修正後、再実行
+# Retry after manual fixes
 gwq claude task retry auth-impl
 
-# セッションを直接確認
+# Check session directly
 gwq claude session attach auth-impl
 ```
 
-## メリット
+## Benefits
 
-1. **時間の有効活用**: 睡眠時間中の自動開発
-2. **品質保証**: 自動レビューによる品質向上
-3. **効率的な並列処理**: リソースを最大限活用
-4. **統合管理**: 一つのコマンド体系で完結
-5. **拡張性**: 将来的な他エージェント対応
-6. **既存UXとの整合性**: gwqの使い勝手を維持
+1. **Effective Time Utilization**: Automated development during sleep
+2. **Quality Assurance**: Quality improvement through automatic reviews
+3. **Efficient Parallel Processing**: Maximum resource utilization
+4. **Integrated Management**: Complete functionality in a single command system
+5. **Extensibility**: Future support for other agents
+6. **UX Consistency**: Maintains gwq usability
 
-## 制限事項
+## Limitations
 
-1. Claude Code実行環境が必要
-2. tmuxがインストールされている必要
-3. ネットワーク接続が必要
-4. リソース使用量の管理が重要
+1. Requires Claude Code execution environment
+2. Requires tmux installation
+3. Requires network connection
+4. Important to manage resource usage
 
-## まとめ
+## Summary
 
-この設計により、gwqはClaude Code前提の自動開発プラットフォームとして機能し、開発者のアイドルタイムを有効活用できます。将来的な拡張性も考慮し、他のAIエージェントにも対応可能な設計としています。
+This design enables gwq to function as a Claude Code-focused automated development platform, effectively utilizing developer idle time. The design considers future extensibility and can support other AI agents.
 
-## 関連ドキュメント
+## Related Documentation
 
-- [DESIGN_TMUX_SESSION.md](./DESIGN_TMUX_SESSION.md) - tmuxセッション管理の詳細
+- [DESIGN_TMUX_SESSION.md](./DESIGN_TMUX_SESSION.md) - Detailed tmux session management
