@@ -408,6 +408,116 @@ type ClaudeAgent struct {
 }
 
 func (c *ClaudeAgent) Name() string { return "claude" }
+
+func (c *ClaudeAgent) Execute(ctx context.Context, task *Task) (*TaskResult, error) {
+    // Build Claude Code command with automation flags
+    cmd := c.buildCommand(task)
+    
+    // Create tmux session for persistent execution
+    session, err := c.sessionMgr.CreateSession(ctx, SessionOptions{
+        Context:    "claude",
+        Identifier: task.ID,
+        WorkingDir: task.WorktreePath,
+        Command:    cmd,
+        Metadata: map[string]string{
+            "task_id":   task.ID,
+            "task_name": task.Name,
+            "branch":    task.Branch,
+        },
+    })
+    if err != nil {
+        return nil, fmt.Errorf("failed to create session: %w", err)
+    }
+    
+    // Monitor execution and handle results
+    result, err := c.monitorExecution(ctx, session, task)
+    if err != nil {
+        return nil, err
+    }
+    
+    return result, nil
+}
+
+func (c *ClaudeAgent) buildCommand(task *Task) string {
+    args := []string{
+        c.config.Executable,
+        "--dangerously-skip-permissions",
+        "--json-output",
+    }
+    
+    // Add timeout if specified
+    if task.Config.Timeout != "" {
+        args = append(args, "--timeout", task.Config.Timeout)
+    }
+    
+    // Add max iterations
+    if task.Config.MaxIterations > 0 {
+        args = append(args, "--max-iterations", strconv.Itoa(task.Config.MaxIterations))
+    }
+    
+    // Add task context as a comprehensive prompt
+    prompt := c.buildTaskPrompt(task)
+    args = append(args, "--task", prompt)
+    
+    return strings.Join(args, " ")
+}
+
+func (c *ClaudeAgent) buildTaskPrompt(task *Task) string {
+    var prompt strings.Builder
+    
+    prompt.WriteString(fmt.Sprintf("# Task: %s\n\n", task.Name))
+    
+    if task.Context != "" {
+        prompt.WriteString(fmt.Sprintf("## Context\n%s\n\n", task.Context))
+    }
+    
+    if len(task.Objectives) > 0 {
+        prompt.WriteString("## Objectives\n")
+        for _, obj := range task.Objectives {
+            prompt.WriteString(fmt.Sprintf("- %s\n", obj))
+        }
+        prompt.WriteString("\n")
+    }
+    
+    if task.Instructions != "" {
+        prompt.WriteString(fmt.Sprintf("## Instructions\n%s\n\n", task.Instructions))
+    }
+    
+    if len(task.Constraints) > 0 {
+        prompt.WriteString("## Constraints\n")
+        for _, constraint := range task.Constraints {
+            prompt.WriteString(fmt.Sprintf("- %s\n", constraint))
+        }
+        prompt.WriteString("\n")
+    }
+    
+    if len(task.FilesToFocus) > 0 {
+        prompt.WriteString("## Files to Focus On\n")
+        for _, file := range task.FilesToFocus {
+            prompt.WriteString(fmt.Sprintf("- %s\n", file))
+        }
+        prompt.WriteString("\n")
+    }
+    
+    if len(task.VerificationCommands) > 0 {
+        prompt.WriteString("## Verification Commands\n")
+        prompt.WriteString("Please run these commands to verify your work:\n")
+        for _, cmd := range task.VerificationCommands {
+            prompt.WriteString(fmt.Sprintf("- `%s`\n", cmd))
+        }
+        prompt.WriteString("\n")
+    }
+    
+    prompt.WriteString("## Success Criteria\n")
+    prompt.WriteString("Task is complete when:\n")
+    prompt.WriteString("- All objectives are met\n")
+    prompt.WriteString("- All verification commands pass\n")
+    prompt.WriteString("- Code follows project conventions\n")
+    prompt.WriteString("- No security issues introduced\n")
+    
+    return prompt.String()
+}
+
 func (c *ClaudeAgent) Capabilities() []Capability {
     return []Capability{
         CapabilityCodeGeneration,
