@@ -57,7 +57,7 @@ graph TD
     
     F --> K[Worktree 1]
     G --> L[Worktree 2]
-    H --> M[Log Files]
+    H --> M[tmux History]
 ```
 
 ### Data Model
@@ -188,10 +188,6 @@ gwq claude session list
 # Attach to session (pattern matching)
 gwq claude session attach auth
 gwq claude session attach        # Fuzzy finder
-
-# Display logs
-gwq claude session logs auth --follow
-gwq claude session logs --grep "error"
 
 # Terminate session
 gwq claude session kill auth
@@ -366,7 +362,7 @@ starvation_prevention = true
 # tmux session configuration
 auto_create_session = true
 session_prefix = "gwq-claude"
-log_dir = "~/.gwq/claude/logs"
+history_limit = 50000
 ```
 
 ## Agent Abstraction Design
@@ -520,8 +516,8 @@ gwq status --verbose
 # Check failed tasks
 gwq claude task list --filter failed
 
-# Check logs
-gwq claude session logs auth-impl --grep "error"
+# Check session directly for debugging
+gwq claude session attach auth-impl
 
 # Retry after manual fixes
 gwq claude task retry auth-impl

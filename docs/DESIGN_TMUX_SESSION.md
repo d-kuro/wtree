@@ -31,7 +31,6 @@ Examples:
 type SessionManager struct {
     config    *SessionConfig
     tmuxCmd   *TmuxCommand
-    logger    *SessionLogger
 }
 
 type ClaudeSession struct {
@@ -43,7 +42,7 @@ type ClaudeSession struct {
     PID         int       `json:"pid"`
     StartTime   time.Time `json:"start_time"`
     Status      Status    `json:"status"`
-    LogFile     string    `json:"log_file"`
+    HistorySize int       `json:"history_size"`
 }
 
 type Status string
@@ -65,13 +64,20 @@ Automatically create tmux sessions when executing Claude Code:
 ```go
 func (s *SessionManager) CreateSession(taskID, worktreePath, command string) (*ClaudeSession, error) {
     sessionName := fmt.Sprintf("gwq-claude-%s-%s", taskID, time.Now().Format("20060102150405"))
-    logFile := filepath.Join(s.config.LogDir, fmt.Sprintf("%s.log", sessionName))
     
-    // Create tmux session
+    // Create tmux session with increased history limit
     tmuxCmd := fmt.Sprintf("tmux new-session -d -s %s -c %s", sessionName, worktreePath)
+    if err := exec.Command("sh", "-c", tmuxCmd).Run(); err != nil {
+        return nil, err
+    }
     
-    // Execute Claude Code with logging
-    claudeCmd := fmt.Sprintf("%s 2>&1 | tee %s", command, logFile)
+    // Set history limit for this session
+    historyCmd := fmt.Sprintf("tmux set-option -t %s history-limit %d", sessionName, s.config.HistoryLimit)
+    exec.Command("sh", "-c", historyCmd).Run()
+    
+    // Execute Claude Code in the session
+    claudeCmd := fmt.Sprintf("tmux send-keys -t %s '%s' Enter", sessionName, command)
+    exec.Command("sh", "-c", claudeCmd).Run()
     
     session := &ClaudeSession{
         ID:           generateID(),
@@ -81,36 +87,37 @@ func (s *SessionManager) CreateSession(taskID, worktreePath, command string) (*C
         Command:      command,
         StartTime:    time.Now(),
         Status:       StatusRunning,
-        LogFile:      logFile,
+        HistorySize:  s.config.HistoryLimit,
     }
     
     return session, nil
 }
 ```
 
-### Log Management
+### tmux History Management
+
+Uses tmux's built-in history and buffer functionality instead of custom logging:
 
 ```go
-type SessionLogger struct {
-    baseDir string
+type SessionManager struct {
+    config    *SessionConfig
+    tmuxCmd   *TmuxCommand
 }
 
-func (l *SessionLogger) CreateLogFile(sessionName string) (string, error) {
-    logFile := filepath.Join(l.baseDir, fmt.Sprintf("%s.log", sessionName))
-    
-    // Create log file and setup rotation
-    file, err := os.Create(logFile)
+func (s *SessionManager) CaptureHistory(sessionName string, lines int) ([]string, error) {
+    // Use tmux capture-pane to get session history
+    cmd := fmt.Sprintf("tmux capture-pane -t %s -p -S -%d", sessionName, lines)
+    output, err := exec.Command("sh", "-c", cmd).Output()
     if err != nil {
-        return "", err
+        return nil, err
     }
-    defer file.Close()
-    
-    return logFile, nil
+    return strings.Split(string(output), "\n"), nil
 }
 
-func (l *SessionLogger) TailLog(sessionName string, lines int) ([]string, error) {
-    logFile := filepath.Join(l.baseDir, fmt.Sprintf("%s.log", sessionName))
-    // tail implementation
+func (s *SessionManager) SaveHistory(sessionName, filename string) error {
+    // Save current buffer to file using tmux save-buffer
+    cmd := fmt.Sprintf("tmux capture-pane -t %s && tmux save-buffer %s", sessionName, filename)
+    return exec.Command("sh", "-c", cmd).Run()
 }
 ```
 
@@ -174,30 +181,6 @@ gwq session attach
 gwq session attach -i
 ```
 
-#### `gwq session logs`
-
-Display logs:
-
-```bash
-# Display logs with pattern matching
-gwq session logs auth
-
-# Auto fuzzy finder when multiple matches
-gwq session logs feature
-
-# Fuzzy finder selection without arguments
-gwq session logs
-
-# Real-time logs (equivalent to tail)
-gwq session logs auth -f
-gwq session logs auth --follow
-
-# Display last N lines
-gwq session logs auth --tail 100
-
-# Display all logs (no line limit)
-gwq session logs auth --all
-```
 
 #### `gwq session kill`
 
@@ -279,54 +262,40 @@ gwq task list --verbose
 # auth-review  review/auth   completed  detached     2h 15m
 ```
 
-## Log Management Features
+## tmux History Features
 
-### Log File Structure
+### History Configuration
 
-```
-~/.gwq/logs/sessions/
-├── gwq-claude-abc123-20240115103045.log
-├── gwq-claude-def456-20240115110230.log
-└── gwq-claude-ghi789-20240115120015.log
-```
-
-### Log Rotation
-
-```toml
-[session.logging]
-# Log directory
-log_dir = "~/.gwq/logs/sessions"
-
-# Log rotation
-max_log_files = 100
-log_retention_days = 30
-max_log_size_mb = 100
-
-# Log level
-log_level = "info"
-```
-
-### Log Search
-
-Following existing grep patterns for log search:
+tmux provides built-in history management that is more efficient than custom logging:
 
 ```bash
-# Search keywords across all sessions
-gwq session logs --grep "error"
+# Set global history limit in tmux.conf
+set-option -g history-limit 50000
 
-# Pattern search in specific session
-gwq session logs auth --grep "authentication.*failed"
+# Per-session history limit (set by gwq)
+tmux set-option -t session-name history-limit 50000
 
-# Multiple keyword search
-gwq session logs --grep "error|failed|exception"
+# Capture session history
+tmux capture-pane -t session-name -p -S -1000
 
-# Time range specification
-gwq session logs auth --since "1h"
-gwq session logs auth --since "2024-01-15 10:00"
+# Save captured content to file
+tmux save-buffer ~/session-history.txt
+```
 
-# Log level filter
-gwq session logs auth --filter error
-gwq session logs auth --filter warn
+### History Search
+
+Use tmux's built-in search functionality:
+
+```bash
+# Enter copy mode and search (within tmux session)
+Ctrl+B [         # Enter copy mode
+Ctrl+S           # Search forward
+Ctrl+R           # Search backward
+
+# Capture and search outside tmux
+tmux capture-pane -t auth-session -p -S -1000 | grep "error"
+tmux capture-pane -t auth-session && tmux save-buffer /tmp/history.txt
+grep "authentication" /tmp/history.txt
 ```
 
 ## Configuration
@@ -354,10 +323,11 @@ default_shell = "/bin/bash"
 session_timeout = "24h"
 keep_alive = true
 
-[session.logging]
-log_dir = "~/.gwq/logs/sessions"
-max_log_files = 100
-log_retention_days = 30
+[session.history]
+# tmux history configuration
+history_limit = 50000
+history_auto_save = true
+history_save_dir = "~/.gwq/history"
 ```
 
 ## Usage Examples
@@ -372,9 +342,6 @@ gwq task add -b feature/auth "Authentication system implementation"
 gwq session list
 gwq status --verbose  # includes session information
 
-# Check logs (pattern matching)
-gwq session logs auth --follow
-
 # Attach to session to check progress
 gwq session attach auth
 
@@ -383,17 +350,18 @@ gwq session attach auth
 
 # Next morning, check results
 gwq session list --filter completed
-gwq session logs auth --tail 50
+# Use tmux history to check output
+tmux capture-pane -t gwq-claude-auth-* -p -S -100
 ```
 
-### Log Analysis Examples
+### History Analysis Examples
 
 ```bash
-# Identify sessions with errors
-gwq session logs --grep "error|failed|exception"
+# Capture and search session history for errors
+tmux capture-pane -t session-name -p -S -1000 | grep "error\|failed\|exception"
 
 # Track changes related to specific files
-gwq session logs --grep "auth.go"
+tmux capture-pane -t session-name -p -S -1000 | grep "auth.go"
 
 # Identify long-running tasks
 gwq session list --sort duration
@@ -405,17 +373,17 @@ gwq session list --filter running
 ## Benefits
 
 1. **Process Persistence**: Claude Code continues execution even after terminal disconnection
-2. **Complete Log Recording**: All output is automatically saved
-3. **Debugging Support**: Log search and analysis capabilities
+2. **History Recording**: All output is automatically saved in tmux history
+3. **Debugging Support**: tmux history search and analysis capabilities
 4. **Monitoring Functionality**: Detailed understanding of execution status
-5. **Simple Design**: Lightweight implementation focused on minimal features
+5. **Simple Design**: Lightweight implementation using native tmux features
 
 ## Limitations
 
 1. Works only in environments where tmux is installed
 2. Resource consumption increases as the number of sessions grows
-3. Disk space management for log files is required
+3. tmux history is limited by configured history-limit
 
 ## Summary
 
-This tmux session management feature significantly improves the stability and monitorability of Claude Code execution. By focusing purely on process management and log recording without complex layout management, it provides a simple and reliable system.
+This tmux session management feature significantly improves the stability and monitorability of Claude Code execution. By focusing purely on process management and using tmux's native history features without complex layout management, it provides a simple and reliable system.
