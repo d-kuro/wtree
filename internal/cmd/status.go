@@ -28,6 +28,7 @@ var (
 	statusGlobal       bool
 	statusShowProcess  bool
 	statusNoFetch      bool
+	statusStaleDays    int
 )
 
 var statusCmd = &cobra.Command{
@@ -70,6 +71,7 @@ func init() {
 	statusCmd.Flags().BoolVarP(&statusGlobal, "global", "g", false, "Show all worktrees from base directory")
 	statusCmd.Flags().BoolVar(&statusShowProcess, "show-processes", false, "Include running processes (slower)")
 	statusCmd.Flags().BoolVar(&statusNoFetch, "no-fetch", false, "Skip remote status check (faster)")
+	statusCmd.Flags().IntVar(&statusStaleDays, "stale-days", 14, "Days of inactivity before marking as stale")
 }
 
 func runStatus(cmd *cobra.Command, args []string) error {
@@ -200,8 +202,12 @@ func collectWorktreeStatuses(ctx context.Context, cfg *models.Config, printer *u
 		}
 	}
 	
-	collector := NewStatusCollector(statusShowProcess, !statusNoFetch)
-	collector.basedir = cfg.Worktree.BaseDir
+	collector := NewStatusCollectorWithOptions(StatusCollectorOptions{
+		IncludeProcess: statusShowProcess,
+		FetchRemote:    !statusNoFetch,
+		StaleThreshold: time.Duration(statusStaleDays) * 24 * time.Hour,
+		BaseDir:        cfg.Worktree.BaseDir,
+	})
 	return collector.CollectAll(ctx, worktrees)
 }
 

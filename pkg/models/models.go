@@ -83,6 +83,7 @@ const (
 	WorktreeStatusStaged   WorktreeState = "staged"
 	WorktreeStatusConflict WorktreeState = "conflict"
 	WorktreeStatusStale    WorktreeState = "stale"
+	WorktreeStatusUnknown  WorktreeState = "unknown"
 )
 
 // GitStatus contains detailed git status information.
