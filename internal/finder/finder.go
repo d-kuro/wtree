@@ -15,8 +15,8 @@ import (
 
 // Finder provides fuzzy finder functionality.
 type Finder struct {
-	git        *git.Git
-	config     *models.FinderConfig
+	git          *git.Git
+	config       *models.FinderConfig
 	useTildeHome bool
 }
 
@@ -176,7 +176,7 @@ func (f *Finder) SelectSession(sessions []*tmux.Session) (*tmux.Session, error) 
 	}
 
 	opts := f.buildSessionFinderOptions(sessions)
-	
+
 	idx, err := fuzzyfinder.Find(sessions, f.formatSessionForDisplay(sessions), opts...)
 	if err != nil {
 		return nil, err
@@ -193,7 +193,7 @@ func (f *Finder) SelectMultipleSessions(sessions []*tmux.Session) ([]*tmux.Sessi
 
 	opts := f.buildSessionFinderOptions(sessions)
 	opts[0] = fuzzyfinder.WithPromptString("Select sessions (Tab to select multiple)> ")
-	
+
 	indices, err := fuzzyfinder.FindMulti(sessions, f.formatSessionForDisplay(sessions), opts...)
 	if err != nil {
 		return nil, err
@@ -360,4 +360,3 @@ func (f *Finder) formatSessionForDisplay(sessions []*tmux.Session) func(int) str
 		return fmt.Sprintf("%s/%s - %s", session.Context, session.Identifier, session.Command)
 	}
 }
-

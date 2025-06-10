@@ -95,7 +95,6 @@ func runTmuxAttach(cmd *cobra.Command, args []string) error {
 	return sessionManager.AttachSessionDirect(sessionToAttach)
 }
 
-
 func findMatchingSessions(sessions []*tmux.Session, pattern string) []*tmux.Session {
 	pattern = strings.ToLower(pattern)
 	var matches []*tmux.Session
@@ -120,4 +119,3 @@ func createSessionFinder(cfg *models.Config) *finder.Finder {
 func selectSessionWithFinder(sessions []*tmux.Session, cfg *models.Config) (*tmux.Session, error) {
 	return createSessionFinder(cfg).SelectSession(sessions)
 }
-

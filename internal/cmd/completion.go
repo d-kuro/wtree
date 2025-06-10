@@ -81,7 +81,7 @@ func getGlobalWorktreeCompletions(_ *cobra.Command, args []string, toComplete st
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	
+
 	entries := reg.List()
 
 	var completions []string
@@ -131,10 +131,10 @@ func getConfigKeyCompletions(_ *cobra.Command, args []string, toComplete string)
 func getRemoveCompletions(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	worktreeCompletions, _ := getWorktreeCompletions(cmd, args, toComplete)
 	branchCompletions, _ := getBranchCompletions(cmd, args, toComplete)
-	
+
 	// Combine both completions
 	completions := append(worktreeCompletions, branchCompletions...)
-	
+
 	// Remove duplicates
 	seen := make(map[string]bool)
 	var uniqueCompletions []string
@@ -144,6 +144,6 @@ func getRemoveCompletions(cmd *cobra.Command, args []string, toComplete string) 
 			uniqueCompletions = append(uniqueCompletions, comp)
 		}
 	}
-	
+
 	return uniqueCompletions, cobra.ShellCompDirectiveNoFileComp
 }

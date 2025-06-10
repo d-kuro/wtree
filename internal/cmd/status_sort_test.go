@@ -81,7 +81,7 @@ func TestSortStatuses(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sortStatuses(tt.statuses, tt.sortBy)
-			
+
 			for i, expected := range tt.want {
 				if tt.statuses[i].Branch != expected {
 					t.Errorf("sortStatuses() index %d = %s, want %s", i, tt.statuses[i].Branch, expected)

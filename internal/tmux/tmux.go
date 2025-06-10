@@ -65,7 +65,7 @@ func (t *TmuxCommand) ListSessions() ([]string, error) {
 		}
 		return nil, err
 	}
-	
+
 	lines := strings.Split(strings.TrimSpace(output), "\n")
 	var sessions []string
 	for _, line := range lines {
@@ -86,28 +86,28 @@ func (t *TmuxCommand) ListSessionsDetailed() ([]*SessionInfo, error) {
 		}
 		return nil, err
 	}
-	
+
 	lines := strings.Split(strings.TrimSpace(output), "\n")
 	var sessions []*SessionInfo
 	for _, line := range lines {
 		if line == "" {
 			continue
 		}
-		
+
 		parts := strings.Split(line, ":")
 		if len(parts) < 6 {
 			continue
 		}
-		
+
 		sessionInfo := &SessionInfo{
-			Name:            parts[0],
-			Created:         parts[1],
-			Activity:        parts[2],
-			Attached:        parts[3],
-			CurrentCommand:  parts[4],
-			WorkingDir:      parts[5],
+			Name:           parts[0],
+			Created:        parts[1],
+			Activity:       parts[2],
+			Attached:       parts[3],
+			CurrentCommand: parts[4],
+			WorkingDir:     parts[5],
 		}
-		
+
 		sessions = append(sessions, sessionInfo)
 	}
 	return sessions, nil
@@ -156,17 +156,16 @@ func (t *TmuxCommand) SaveBuffer(sessionName, filename string) error {
 	if err := t.runCommand(captureArgs...); err != nil {
 		return err
 	}
-	
+
 	saveArgs := []string{"save-buffer", filename}
 	return t.runCommand(saveArgs...)
 }
-
 
 func (t *TmuxCommand) runCommand(args ...string) error {
 	cmd := exec.Command(t.command, args...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
-	
+
 	err := cmd.Run()
 	if err != nil {
 		return fmt.Errorf("tmux command failed: %w, stderr: %s", err, stderr.String())
@@ -179,7 +178,7 @@ func (t *TmuxCommand) runCommandOutput(args ...string) (string, error) {
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	
+
 	err := cmd.Run()
 	if err != nil {
 		return "", fmt.Errorf("tmux command failed: %w, stderr: %s", err, stderr.String())
@@ -191,7 +190,7 @@ func (t *TmuxCommand) RunCommandContext(ctx context.Context, args ...string) err
 	cmd := exec.CommandContext(ctx, t.command, args...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
-	
+
 	err := cmd.Run()
 	if err != nil {
 		return fmt.Errorf("tmux command failed: %w, stderr: %s", err, stderr.String())

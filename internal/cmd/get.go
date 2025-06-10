@@ -50,7 +50,7 @@ The path is printed to stdout, making it suitable for shell command substitution
 
 func init() {
 	rootCmd.AddCommand(getCmd)
-	
+
 	getCmd.Flags().BoolVarP(&getGlobal, "global", "g", false, "Get from all repositories")
 	getCmd.Flags().BoolVarP(&getNullTerminate, "null", "0", false, "Output null-terminated path")
 }
@@ -80,7 +80,7 @@ func runGet(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		
+
 		if len(matches) == 0 {
 			return fmt.Errorf("no worktree found matching pattern: %s", args[0])
 		} else if len(matches) == 1 {
@@ -142,7 +142,7 @@ func getGlobalWorktreePath(cfg *models.Config, args []string) error {
 		// Pattern matching
 		pattern := args[0]
 		matches := discovery.FilterGlobalWorktrees(entries, pattern)
-		
+
 		if len(matches) == 0 {
 			return fmt.Errorf("no worktree matches pattern: %s", pattern)
 		} else if len(matches) == 1 {
@@ -150,7 +150,7 @@ func getGlobalWorktreePath(cfg *models.Config, args []string) error {
 		} else {
 			// Multiple matches - use fuzzy finder
 			worktrees := discovery.ConvertToWorktreeModels(matches, true)
-			
+
 			// Create a temporary git instance for finder
 			g := &git.Git{}
 			f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
@@ -170,7 +170,7 @@ func getGlobalWorktreePath(cfg *models.Config, args []string) error {
 	} else {
 		// No pattern - show all in fuzzy finder
 		worktrees := discovery.ConvertToWorktreeModels(entries, true)
-		
+
 		g := &git.Git{}
 		f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
 		selectedWT, err := f.SelectWorktree(worktrees)

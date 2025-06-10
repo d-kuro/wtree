@@ -73,9 +73,9 @@ func (p *Printer) PrintWorktrees(worktrees []models.Worktree, verbose bool) {
 			if wt.IsMain && p.useIcons {
 				branchWithMarker = "● " + wt.Branch
 			} else {
-				branchWithMarker = "  " + wt.Branch  // Two spaces to match "● " width
+				branchWithMarker = "  " + wt.Branch // Two spaces to match "● " width
 			}
-			
+
 			path := wt.Path
 			if p.useTildeHome {
 				path = utils.TildePath(path)
@@ -205,4 +205,3 @@ func (p *Printer) printConfigRecursive(prefix string, data any) {
 		fmt.Printf("%s = %v\n", prefix, v)
 	}
 }
-

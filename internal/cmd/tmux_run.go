@@ -102,9 +102,9 @@ func runTmuxRun(cmd *cobra.Command, args []string) error {
 		WorkingDir: workingDir,
 		Command:    finalCommand,
 		Metadata: map[string]string{
-			"created_by":    "gwq tmux run",
-			"auto_cleanup":  fmt.Sprintf("%t", tmuxRunAutoCleanup),
-			"orig_command":  command,
+			"created_by":   "gwq tmux run",
+			"auto_cleanup": fmt.Sprintf("%t", tmuxRunAutoCleanup),
+			"orig_command": command,
 		},
 	}
 
@@ -117,7 +117,7 @@ func runTmuxRun(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Session ID: %s\n", session.ID)
 	fmt.Printf("Command: %s\n", command)
 	fmt.Printf("Working Directory: %s\n", session.WorkingDir)
-	
+
 	if tmuxRunAutoCleanup {
 		fmt.Printf("Auto-cleanup: Session will be deleted when command completes\n")
 	} else {
@@ -200,7 +200,7 @@ func generateIdentifierFromCommand(command, workingDir string) string {
 
 	// Use the first command word as base
 	baseCmd := filepath.Base(parts[0])
-	
+
 	// Add directory context if available
 	dirName := filepath.Base(workingDir)
 	if dirName != "." && dirName != "/" {

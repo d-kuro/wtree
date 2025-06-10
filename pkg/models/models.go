@@ -80,14 +80,14 @@ type TmuxConfig struct {
 
 // WorktreeStatus represents the current status of a worktree.
 type WorktreeStatus struct {
-	Path           string           `json:"path"`             // Absolute path to the worktree
-	Branch         string           `json:"branch"`           // Branch name
-	Repository     string           `json:"repository"`       // Repository identifier
-	Status         WorktreeState    `json:"status"`           // Current status (clean, modified, etc.)
-	GitStatus      GitStatus        `json:"git_status"`       // Detailed git status
-	LastActivity   time.Time        `json:"last_activity"`    // Last modification time
-	ActiveProcess  []ProcessInfo    `json:"active_processes"` // Running processes
-	IsCurrent      bool             `json:"is_current"`       // Whether this is the current worktree
+	Path          string        `json:"path"`             // Absolute path to the worktree
+	Branch        string        `json:"branch"`           // Branch name
+	Repository    string        `json:"repository"`       // Repository identifier
+	Status        WorktreeState `json:"status"`           // Current status (clean, modified, etc.)
+	GitStatus     GitStatus     `json:"git_status"`       // Detailed git status
+	LastActivity  time.Time     `json:"last_activity"`    // Last modification time
+	ActiveProcess []ProcessInfo `json:"active_processes"` // Running processes
+	IsCurrent     bool          `json:"is_current"`       // Whether this is the current worktree
 }
 
 // WorktreeState represents the overall state of a worktree.

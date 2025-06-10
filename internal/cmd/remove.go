@@ -16,11 +16,11 @@ import (
 )
 
 var (
-	removeForce         bool
-	removeDryRun        bool
-	removeGlobal        bool
-	deleteBranch        bool
-	forceDeleteBranch   bool
+	removeForce       bool
+	removeDryRun      bool
+	removeGlobal      bool
+	deleteBranch      bool
+	forceDeleteBranch bool
 )
 
 // removeCmd represents the remove command.
@@ -114,7 +114,7 @@ func runRemove(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		
+
 		// Filter out main worktrees
 		var nonMainMatches []models.Worktree
 		for _, wt := range matches {
@@ -122,7 +122,7 @@ func runRemove(cmd *cobra.Command, args []string) error {
 				nonMainMatches = append(nonMainMatches, wt)
 			}
 		}
-		
+
 		if len(nonMainMatches) == 0 {
 			return fmt.Errorf("no worktree found matching pattern: %s", args[0])
 		} else if len(nonMainMatches) == 1 {
@@ -216,19 +216,19 @@ func removeGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []string
 		// Pattern matching
 		pattern := strings.ToLower(args[0])
 		var matches []*discovery.GlobalWorktreeEntry
-		
+
 		for _, entry := range nonMainEntries {
 			branchLower := strings.ToLower(entry.Branch)
 			var repoName string
 			if entry.RepositoryInfo != nil {
 				repoName = strings.ToLower(entry.RepositoryInfo.Repository)
 			}
-			
+
 			// Match against branch name, path, repo name, or repo:branch pattern
-			if strings.Contains(branchLower, pattern) || 
-			   strings.Contains(strings.ToLower(entry.Path), pattern) ||
-			   strings.Contains(repoName, pattern) ||
-			   strings.Contains(repoName+":"+branchLower, pattern) {
+			if strings.Contains(branchLower, pattern) ||
+				strings.Contains(strings.ToLower(entry.Path), pattern) ||
+				strings.Contains(repoName, pattern) ||
+				strings.Contains(repoName+":"+branchLower, pattern) {
 				matches = append(matches, entry)
 			}
 		}
@@ -246,7 +246,7 @@ func removeGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []string
 			if g == nil {
 				g = &git.Git{}
 			}
-			
+
 			f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
 			selected, err := f.SelectMultipleWorktrees(worktrees)
 			if err != nil {
@@ -274,7 +274,7 @@ func removeGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []string
 		if g == nil {
 			g = &git.Git{}
 		}
-		
+
 		f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
 		selected, err := f.SelectMultipleWorktrees(worktrees)
 		if err != nil {
@@ -327,7 +327,7 @@ func removeGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []string
 				repoPath = repoRootPath
 			}
 		}
-		
+
 		if err := os.Chdir(repoPath); err != nil {
 			printer.PrintError(fmt.Errorf("failed to change to repository %s: %v", repoPath, err))
 			continue
@@ -367,7 +367,7 @@ func removeGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []string
 		if deleteBranch && entry.Branch != "" {
 			printer.PrintSuccess(fmt.Sprintf("Deleted branch: %s", entry.Branch))
 		}
-		
+
 		// Change back to original directory
 		_ = os.Chdir(originalDir)
 	}

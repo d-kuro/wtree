@@ -18,17 +18,17 @@ import (
 )
 
 var (
-	statusWatch        bool
-	statusInterval     int
-	statusFilter       string
-	statusSort         string
-	statusJSON         bool
-	statusCSV          bool
-	statusVerbose      bool
-	statusGlobal       bool
-	statusShowProcess  bool
-	statusNoFetch      bool
-	statusStaleDays    int
+	statusWatch       bool
+	statusInterval    int
+	statusFilter      string
+	statusSort        string
+	statusJSON        bool
+	statusCSV         bool
+	statusVerbose     bool
+	statusGlobal      bool
+	statusShowProcess bool
+	statusNoFetch     bool
+	statusStaleDays   int
 )
 
 var statusCmd = &cobra.Command{
@@ -108,58 +108,58 @@ func runStatusWatch(cmd *cobra.Command, interval time.Duration) error {
 	}
 
 	printer := ui.New(&cfg.UI)
-	
+
 	hideCursor := "\033[?25l"
 	showCursor := "\033[?25h"
 	clearScreen := "\033[H\033[2J"
-	
+
 	fmt.Print(hideCursor)
 	defer fmt.Print(showCursor)
-	
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-	
+
 	go func() {
 		<-sigChan
 		cancel()
 	}()
-	
+
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
-	
+
 	refresh := func() error {
 		fmt.Print(clearScreen)
-		
+
 		statuses, err := collectWorktreeStatuses(ctx, cfg, printer)
 		if err != nil {
 			return fmt.Errorf("failed to collect worktree statuses: %w", err)
 		}
-		
+
 		statuses = applyFiltersAndSort(statuses)
-		
+
 		summary := calculateSummary(statuses)
 		currentRepo := getCurrentRepository()
-		
-		fmt.Printf("Worktrees Status (%s) - Updated: %s\n", 
+
+		fmt.Printf("Worktrees Status (%s) - Updated: %s\n",
 			currentRepo, time.Now().Format("15:04:05"))
 		fmt.Printf("Total: %d | Changed: %d | Up to date: %d | Inactive: %d\n\n",
 			summary.Total, summary.Modified, summary.Clean, summary.Stale)
-		
+
 		if err := outputStatuses(statuses, printer, cfg); err != nil {
 			return err
 		}
-		
+
 		fmt.Println("\n[Press Ctrl+C to exit]")
 		return nil
 	}
-	
+
 	if err := refresh(); err != nil {
 		return err
 	}
-	
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -174,7 +174,7 @@ func runStatusWatch(cmd *cobra.Command, interval time.Duration) error {
 
 func collectWorktreeStatuses(ctx context.Context, cfg *models.Config, printer *ui.Printer) ([]*models.WorktreeStatus, error) {
 	var worktrees []*models.Worktree
-	
+
 	g, err := git.NewFromCwd()
 	if err != nil || statusGlobal {
 		globalEntries, err := discovery.DiscoverGlobalWorktrees(cfg.Worktree.BaseDir)
@@ -201,7 +201,7 @@ func collectWorktreeStatuses(ctx context.Context, cfg *models.Config, printer *u
 			worktrees = append(worktrees, &localWorktrees[i])
 		}
 	}
-	
+
 	collector := NewStatusCollectorWithOptions(StatusCollectorOptions{
 		IncludeProcess: statusShowProcess,
 		FetchRemote:    !statusNoFetch,
@@ -215,11 +215,11 @@ func applyFiltersAndSort(statuses []*models.WorktreeStatus) []*models.WorktreeSt
 	if statusFilter != "" {
 		statuses = filterStatuses(statuses, statusFilter)
 	}
-	
+
 	if statusSort != "" {
 		sortStatuses(statuses, statusSort)
 	}
-	
+
 	return statuses
 }
 
@@ -239,12 +239,12 @@ func getCurrentRepository() string {
 	if err != nil {
 		return "all repositories"
 	}
-	
+
 	remote, err := g.GetRepositoryURL()
 	if err != nil {
 		return "local"
 	}
-	
+
 	return remote
 }
 
@@ -257,7 +257,7 @@ type statusSummary struct {
 
 func calculateSummary(statuses []*models.WorktreeStatus) statusSummary {
 	summary := statusSummary{Total: len(statuses)}
-	
+
 	for _, s := range statuses {
 		switch s.Status {
 		case models.WorktreeStatusModified:
@@ -268,13 +268,13 @@ func calculateSummary(statuses []*models.WorktreeStatus) statusSummary {
 			summary.Stale++
 		}
 	}
-	
+
 	return summary
 }
 
 func filterStatuses(statuses []*models.WorktreeStatus, filter string) []*models.WorktreeStatus {
 	var filtered []*models.WorktreeStatus
-	
+
 	for _, s := range statuses {
 		switch filter {
 		case "modified", "changed":
@@ -299,6 +299,6 @@ func filterStatuses(statuses []*models.WorktreeStatus, filter string) []*models.
 			}
 		}
 	}
-	
+
 	return filtered
 }

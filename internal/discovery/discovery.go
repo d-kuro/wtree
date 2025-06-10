@@ -14,7 +14,7 @@ import (
 
 // GlobalWorktreeEntry represents a discovered worktree.
 type GlobalWorktreeEntry struct {
-	RepositoryURL  string // Full repository URL
+	RepositoryURL  string              // Full repository URL
 	RepositoryInfo *url.RepositoryInfo // Parsed repository information
 	Branch         string
 	Path           string
@@ -134,7 +134,7 @@ func extractWorktreeInfo(worktreePath string) (*GlobalWorktreeEntry, error) {
 // getCurrentBranch gets the current branch name for a worktree.
 func getCurrentBranch(worktreePath string) (string, error) {
 	g := git.New(worktreePath)
-	
+
 	// Use git rev-parse to get the current branch
 	output, err := g.RunCommand("rev-parse", "--abbrev-ref", "HEAD")
 	if err != nil {
@@ -153,7 +153,7 @@ func getCurrentBranch(worktreePath string) (string, error) {
 // getCurrentCommitHash gets the current commit hash for a worktree.
 func getCurrentCommitHash(worktreePath string) (string, error) {
 	g := git.New(worktreePath)
-	
+
 	output, err := g.RunCommand("rev-parse", "HEAD")
 	if err != nil {
 		return "", err
@@ -165,14 +165,14 @@ func getCurrentCommitHash(worktreePath string) (string, error) {
 // ConvertToWorktreeModels converts GlobalWorktreeEntry to models.Worktree.
 func ConvertToWorktreeModels(entries []*GlobalWorktreeEntry, showRepoName bool) []models.Worktree {
 	worktrees := make([]models.Worktree, 0, len(entries))
-	
+
 	for _, entry := range entries {
 		branch := entry.Branch
 		if showRepoName && entry.RepositoryInfo != nil {
 			// Use repository name from parsed URL info
 			branch = fmt.Sprintf("%s:%s", entry.RepositoryInfo.Repository, entry.Branch)
 		}
-		
+
 		wt := models.Worktree{
 			Branch:     branch,
 			Path:       entry.Path,
@@ -181,7 +181,7 @@ func ConvertToWorktreeModels(entries []*GlobalWorktreeEntry, showRepoName bool) 
 		}
 		worktrees = append(worktrees, wt)
 	}
-	
+
 	return worktrees
 }
 
@@ -189,22 +189,22 @@ func ConvertToWorktreeModels(entries []*GlobalWorktreeEntry, showRepoName bool) 
 func FilterGlobalWorktrees(entries []*GlobalWorktreeEntry, pattern string) []*GlobalWorktreeEntry {
 	pattern = strings.ToLower(pattern)
 	var matches []*GlobalWorktreeEntry
-	
+
 	for _, entry := range entries {
 		branchLower := strings.ToLower(entry.Branch)
 		var repoName string
 		if entry.RepositoryInfo != nil {
 			repoName = strings.ToLower(entry.RepositoryInfo.Repository)
 		}
-		
+
 		// Match against branch name, path, repo name, or repo:branch pattern
-		if strings.Contains(branchLower, pattern) || 
-		   strings.Contains(strings.ToLower(entry.Path), pattern) ||
-		   strings.Contains(repoName, pattern) ||
-		   strings.Contains(repoName+":"+branchLower, pattern) {
+		if strings.Contains(branchLower, pattern) ||
+			strings.Contains(strings.ToLower(entry.Path), pattern) ||
+			strings.Contains(repoName, pattern) ||
+			strings.Contains(repoName+":"+branchLower, pattern) {
 			matches = append(matches, entry)
 		}
 	}
-	
+
 	return matches
 }

@@ -15,10 +15,10 @@ type Repository[T any, ID comparable] interface {
 
 // InMemoryRepository provides a generic in-memory repository implementation.
 type InMemoryRepository[T any, ID comparable] struct {
-	data      map[ID]*T
-	getID     func(*T) ID
-	nextID    func() ID
-	setID     func(*T, ID)
+	data   map[ID]*T
+	getID  func(*T) ID
+	nextID func() ID
+	setID  func(*T, ID)
 }
 
 // NewInMemoryRepository creates a new in-memory repository.

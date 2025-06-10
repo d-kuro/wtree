@@ -112,7 +112,6 @@ func runTmuxKill(cmd *cobra.Command, args []string) error {
 	return killSessions(sessionManager, sessionsToKill)
 }
 
-
 func selectSessionsToKillWithFinder(sessions []*tmux.Session, cfg *models.Config) ([]*tmux.Session, error) {
 	return createSessionFinder(cfg).SelectMultipleSessions(sessions)
 }
@@ -147,14 +146,12 @@ func killSessions(sessionManager *tmux.SessionManager, sessions []*tmux.Session)
 
 	successCount := len(sessions) - failedCount
 	fmt.Printf("\nTerminated %d session(s)", successCount)
-	
+
 	if failedCount > 0 {
 		fmt.Printf(" (%d failed)", failedCount)
 		return fmt.Errorf("%d out of %d sessions failed to terminate", failedCount, len(sessions))
 	}
-	
+
 	fmt.Println()
 	return nil
 }
-
-

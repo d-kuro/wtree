@@ -36,7 +36,7 @@ Use -i flag to interactively select a branch using fuzzy finder.`,
 
   # Interactive branch selection
   gwq add -i`,
-	RunE: runAdd,
+	RunE:              runAdd,
 	ValidArgsFunction: getBranchCompletions,
 }
 

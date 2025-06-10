@@ -5,15 +5,15 @@ import (
 )
 
 type Session struct {
-	ID           string            `json:"id"`
-	SessionName  string            `json:"session_name"`
-	Context      string            `json:"context"`
-	Identifier   string            `json:"identifier"`
-	WorkingDir   string            `json:"working_dir"`
-	Command      string            `json:"command"`
-	StartTime    time.Time         `json:"start_time"`
-	HistorySize  int               `json:"history_size"`
-	Metadata     map[string]string `json:"metadata,omitempty"`
+	ID          string            `json:"id"`
+	SessionName string            `json:"session_name"`
+	Context     string            `json:"context"`
+	Identifier  string            `json:"identifier"`
+	WorkingDir  string            `json:"working_dir"`
+	Command     string            `json:"command"`
+	StartTime   time.Time         `json:"start_time"`
+	HistorySize int               `json:"history_size"`
+	Metadata    map[string]string `json:"metadata,omitempty"`
 }
 
 type SessionOptions struct {

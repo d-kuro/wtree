@@ -91,11 +91,11 @@ func runTmuxListOnce(sessionManager *tmux.SessionManager, cfg *models.Config) er
 
 func runTmuxListWatch(sessionManager *tmux.SessionManager, cfg *models.Config) error {
 	printer := ui.New(&cfg.UI)
-	
+
 	hideCursor := "\033[?25l"
 	showCursor := "\033[?25h"
 	clearScreen := "\033[H\033[2J"
-	
+
 	fmt.Print(hideCursor)
 	defer fmt.Print(showCursor)
 
@@ -104,7 +104,7 @@ func runTmuxListWatch(sessionManager *tmux.SessionManager, cfg *models.Config) e
 
 	refresh := func() error {
 		fmt.Print(clearScreen)
-		
+
 		sessions, err := sessionManager.ListSessions()
 		if err != nil {
 			return fmt.Errorf("failed to list sessions: %w", err)
@@ -135,7 +135,6 @@ func runTmuxListWatch(sessionManager *tmux.SessionManager, cfg *models.Config) e
 
 	return nil
 }
-
 
 func applySessionSort(sessions []*tmux.Session, sortBy string) []*tmux.Session {
 	if sortBy == "" {
@@ -197,14 +196,13 @@ func outputSessionsTable(sessions []*tmux.Session, printer *ui.Printer) error {
 		sessionIdentifier := session.Context + "/" + session.Identifier
 		duration := formatSessionDuration(session.StartTime)
 		workdir := formatWorkingDir(session.WorkingDir, printer)
-		
+
 		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n",
 			sessionIdentifier, duration, workdir)
 	}
 
 	return nil
 }
-
 
 func formatSessionDuration(startTime time.Time) string {
 	duration := time.Since(startTime)
@@ -238,17 +236,15 @@ func formatSessionDuration(startTime time.Time) string {
 	}
 }
 
-
 func formatWorkingDir(workdir string, printer *ui.Printer) string {
 	// Apply tilde home replacement first if enabled
 	if printer != nil && printer.UseTildeHome() {
 		workdir = utils.TildePath(workdir)
 	}
-	
+
 	// Then apply truncation if needed
 	if len(workdir) > 30 {
 		return "..." + workdir[len(workdir)-27:]
 	}
 	return workdir
 }
-
