@@ -20,11 +20,6 @@ func TestDefaultSessionConfig(t *testing.T) {
 	}
 }
 
-func TestSessionStatusConstants(t *testing.T) {
-	if string(StatusRunning) != "running" {
-		t.Errorf("Expected StatusRunning to be 'running', got '%s'", string(StatusRunning))
-	}
-}
 
 func TestSessionOptionsCreation(t *testing.T) {
 	opts := SessionOptions{

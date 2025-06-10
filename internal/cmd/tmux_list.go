@@ -22,17 +22,16 @@ var (
 	tmuxListJSON    bool
 	tmuxListCSV     bool
 	tmuxListWatch   bool
-	tmuxListFilter  string
 	tmuxListSort    string
 )
 
 var tmuxListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List active tmux sessions",
-	Long: `List active tmux sessions with their status and information.
+	Long: `List active tmux sessions with their information.
 
-Shows running tmux sessions with context, identifier, status, duration and command.
-Supports various output formats and filtering options.`,
+Shows running tmux sessions with context, identifier, duration and command.
+Supports various output formats and real-time monitoring.`,
 	Example: `  # Simple session list
   gwq tmux list
 
@@ -42,9 +41,8 @@ Supports various output formats and filtering options.`,
   # JSON output for scripting  
   gwq tmux list --json
 
-  # Filter by status
-  gwq tmux list --filter running
-  gwq tmux list --filter completed
+  # Real-time monitoring
+  gwq tmux list --watch
 
   # Sort by duration
   gwq tmux list --sort duration`,
@@ -58,7 +56,6 @@ func init() {
 	tmuxListCmd.Flags().BoolVar(&tmuxListJSON, "json", false, "Output as JSON")
 	tmuxListCmd.Flags().BoolVar(&tmuxListCSV, "csv", false, "Output as CSV")
 	tmuxListCmd.Flags().BoolVarP(&tmuxListWatch, "watch", "w", false, "Real-time monitoring")
-	tmuxListCmd.Flags().StringVarP(&tmuxListFilter, "filter", "f", "", "Filter by status (running, completed, failed)")
 	tmuxListCmd.Flags().StringVarP(&tmuxListSort, "sort", "s", "", "Sort by field (duration, context, identifier)")
 }
 
@@ -84,8 +81,7 @@ func runTmuxListOnce(sessionManager *tmux.SessionManager, cfg *models.Config) er
 		return fmt.Errorf("failed to list sessions: %w", err)
 	}
 
-	filteredSessions := applySessionFilters(sessions, tmuxListFilter)
-	sortedSessions := applySessionSort(filteredSessions, tmuxListSort)
+	sortedSessions := applySessionSort(sessions, tmuxListSort)
 
 	switch {
 	case tmuxListJSON:
@@ -119,12 +115,10 @@ func runTmuxListWatch(sessionManager *tmux.SessionManager, cfg *models.Config) e
 			return fmt.Errorf("failed to list sessions: %w", err)
 		}
 
-		filteredSessions := applySessionFilters(sessions, tmuxListFilter)
-		sortedSessions := applySessionSort(filteredSessions, tmuxListSort)
+		sortedSessions := applySessionSort(sessions, tmuxListSort)
 
 		fmt.Printf("tmux Sessions - Updated: %s\n", time.Now().Format("15:04:05"))
-		fmt.Printf("Total: %d | Running: %d\n\n",
-			len(sessions), countByStatus(sessions, tmux.StatusRunning))
+		fmt.Printf("Total: %d sessions\n\n", len(sessions))
 
 		if err := outputSessionsTable(sortedSessions, printer, tmuxListVerbose); err != nil {
 			return err
@@ -147,20 +141,6 @@ func runTmuxListWatch(sessionManager *tmux.SessionManager, cfg *models.Config) e
 	return nil
 }
 
-func applySessionFilters(sessions []*tmux.Session, filter string) []*tmux.Session {
-	if filter == "" || filter != "running" {
-		return sessions
-	}
-
-	var filtered []*tmux.Session
-	for _, session := range sessions {
-		if session.Status == tmux.StatusRunning {
-			filtered = append(filtered, session)
-		}
-	}
-
-	return filtered
-}
 
 func applySessionSort(sessions []*tmux.Session, sortBy string) []*tmux.Session {
 	if sortBy == "" {
@@ -183,7 +163,7 @@ func outputSessionsCSV(sessions []*tmux.Session) error {
 	defer writer.Flush()
 
 	// Write header
-	header := []string{"Context", "Identifier", "Status", "Duration", "Command", "WorkingDir", "SessionName"}
+	header := []string{"Context", "Identifier", "Duration", "Command", "WorkingDir", "SessionName"}
 	if err := writer.Write(header); err != nil {
 		return err
 	}
@@ -194,7 +174,6 @@ func outputSessionsCSV(sessions []*tmux.Session) error {
 		record := []string{
 			session.Context,
 			session.Identifier,
-			string(session.Status),
 			duration,
 			session.Command,
 			session.WorkingDir,
@@ -218,43 +197,36 @@ func outputSessionsTable(sessions []*tmux.Session, printer *ui.Printer, verbose 
 	defer func() { _ = w.Flush() }()
 
 	if verbose {
-		_, _ = fmt.Fprintln(w, "SESSION\tSTATUS\tDURATION\tWORKING_DIR")
+		_, _ = fmt.Fprintln(w, "SESSION\tDURATION\tWORKING_DIR")
 	} else {
-		_, _ = fmt.Fprintln(w, "SESSION\tSTATUS\tDURATION")
+		_, _ = fmt.Fprintln(w, "SESSION\tDURATION")
 	}
 
 	for _, session := range sessions {
-		// Format session identifier with marker for running sessions
+		// Format session identifier with marker
 		var sessionWithMarker string
 		sessionIdentifier := session.Context + "/" + session.Identifier
-		if session.Status == tmux.StatusRunning && printer != nil && printer.UseIcons() {
+		if printer != nil && printer.UseIcons() {
 			sessionWithMarker = "● " + sessionIdentifier
 		} else {
 			sessionWithMarker = "  " + sessionIdentifier
 		}
 
-		status := formatSessionStatus(session.Status)
 		duration := formatSessionDuration(session.StartTime)
 
 		if verbose {
 			workdir := formatWorkingDir(session.WorkingDir, printer)
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
-				sessionWithMarker, status, duration, workdir)
-		} else {
 			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n",
-				sessionWithMarker, status, duration)
+				sessionWithMarker, duration, workdir)
+		} else {
+			_, _ = fmt.Fprintf(w, "%s\t%s\n",
+				sessionWithMarker, duration)
 		}
 	}
 
 	return nil
 }
 
-func formatSessionStatus(status tmux.Status) string {
-	if status == tmux.StatusRunning {
-		return "running"
-	}
-	return string(status)
-}
 
 func formatSessionDuration(startTime time.Time) string {
 	duration := time.Since(startTime)
@@ -302,12 +274,3 @@ func formatWorkingDir(workdir string, printer *ui.Printer) string {
 	return workdir
 }
 
-func countByStatus(sessions []*tmux.Session, status tmux.Status) int {
-	count := 0
-	for _, session := range sessions {
-		if session.Status == status {
-			count++
-		}
-	}
-	return count
-}

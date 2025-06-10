@@ -62,27 +62,21 @@ func runTmuxAttach(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no tmux sessions found")
 	}
 
-	// Filter to only running sessions for attachment
-	runningSessions := filterRunningSessions(sessions)
-	if len(runningSessions) == 0 {
-		return fmt.Errorf("no running tmux sessions found")
-	}
-
 	var sessionToAttach *tmux.Session
 
 	if len(args) == 0 || tmuxAttachInteractive {
 		// No pattern provided or interactive mode - use fuzzy finder
-		sessionToAttach, err = selectSessionWithFinder(runningSessions, cfg)
+		sessionToAttach, err = selectSessionWithFinder(sessions, cfg)
 		if err != nil {
 			return fmt.Errorf("session selection cancelled: %w", err)
 		}
 	} else {
 		// Pattern provided - find matching sessions
 		pattern := args[0]
-		matches := findMatchingSessions(runningSessions, pattern)
+		matches := findMatchingSessions(sessions, pattern)
 
 		if len(matches) == 0 {
-			return fmt.Errorf("no running session found matching pattern: %s", pattern)
+			return fmt.Errorf("no session found matching pattern: %s", pattern)
 		} else if len(matches) == 1 {
 			sessionToAttach = matches[0]
 		} else {
@@ -101,15 +95,6 @@ func runTmuxAttach(cmd *cobra.Command, args []string) error {
 	return sessionManager.AttachSessionDirect(sessionToAttach)
 }
 
-func filterRunningSessions(sessions []*tmux.Session) []*tmux.Session {
-	var running []*tmux.Session
-	for _, session := range sessions {
-		if session.Status == tmux.StatusRunning {
-			running = append(running, session)
-		}
-	}
-	return running
-}
 
 func findMatchingSessions(sessions []*tmux.Session, pattern string) []*tmux.Session {
 	pattern = strings.ToLower(pattern)

@@ -214,7 +214,6 @@ func (f *Finder) generateSessionPreview(session *tmux.Session, maxLines int) str
 		fmt.Sprintf("Context: %s", session.Context),
 		fmt.Sprintf("Identifier: %s", session.Identifier),
 		fmt.Sprintf("Command: %s", session.Command),
-		fmt.Sprintf("Status: %s", session.Status),
 		fmt.Sprintf("Duration: %s", formatDuration(time.Since(session.StartTime))),
 		fmt.Sprintf("Started: %s", session.StartTime.Format("2006-01-02 15:04:05")),
 	}
@@ -358,11 +357,7 @@ func (f *Finder) buildSessionFinderOptions(sessions []*tmux.Session) []fuzzyfind
 func (f *Finder) formatSessionForDisplay(sessions []*tmux.Session) func(int) string {
 	return func(i int) string {
 		session := sessions[i]
-		marker := "  "
-		if session.Status == tmux.StatusRunning {
-			marker = "● "
-		}
-		return fmt.Sprintf("%s%s/%s (%s) - %s", marker, session.Context, session.Identifier, session.Status, session.Command)
+		return fmt.Sprintf("● %s/%s - %s", session.Context, session.Identifier, session.Command)
 	}
 }
 

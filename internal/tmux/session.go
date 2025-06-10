@@ -4,12 +4,6 @@ import (
 	"time"
 )
 
-type Status string
-
-const (
-	StatusRunning Status = "running"
-)
-
 type Session struct {
 	ID           string            `json:"id"`
 	SessionName  string            `json:"session_name"`
@@ -18,7 +12,6 @@ type Session struct {
 	WorkingDir   string            `json:"working_dir"`
 	Command      string            `json:"command"`
 	StartTime    time.Time         `json:"start_time"`
-	Status       Status            `json:"status"`
 	HistorySize  int               `json:"history_size"`
 	Metadata     map[string]string `json:"metadata,omitempty"`
 }

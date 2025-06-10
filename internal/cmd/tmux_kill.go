@@ -120,9 +120,7 @@ func selectSessionsToKillWithFinder(sessions []*tmux.Session, cfg *models.Config
 func confirmKillSessions(sessions []*tmux.Session) bool {
 	fmt.Printf("\nThis will terminate %d session(s):\n", len(sessions))
 	for _, session := range sessions {
-		statusIndicator := getStatusIndicator(session.Status)
-		fmt.Printf("  %s%s/%s (%s)\n",
-			statusIndicator, session.Context, session.Identifier, session.Status)
+		fmt.Printf("  ● %s/%s\n", session.Context, session.Identifier)
 	}
 
 	fmt.Print("\nAre you sure? (y/N): ")
@@ -159,10 +157,4 @@ func killSessions(sessionManager *tmux.SessionManager, sessions []*tmux.Session)
 	return nil
 }
 
-func getStatusIndicator(status tmux.Status) string {
-	if status == tmux.StatusRunning {
-		return "● "
-	}
-	return "  "
-}
 

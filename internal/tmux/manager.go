@@ -53,7 +53,6 @@ func (s *SessionManager) CreateSession(ctx context.Context, opts SessionOptions)
 		WorkingDir:   opts.WorkingDir,
 		Command:      opts.Command,
 		StartTime:    time.Now(),
-		Status:       StatusRunning,
 		HistorySize:  s.config.HistoryLimit,
 		Metadata:     opts.Metadata,
 	}
@@ -102,12 +101,10 @@ func (s *SessionManager) parseSessionFromTmux(info *SessionInfo) *Session {
 	
 	// Determine command from session name or current command
 	command := info.CurrentCommand
-	status := StatusRunning
 	
 	if command == "bash" || command == "zsh" || command == "sh" {
 		// If shell is running, the original command likely finished but session is still active
 		command = "Shell session (original command completed)"
-		// Keep status as running since the session is still active
 	}
 	
 	return &Session{
@@ -118,7 +115,6 @@ func (s *SessionManager) parseSessionFromTmux(info *SessionInfo) *Session {
 		WorkingDir:  info.WorkingDir,
 		Command:     command,
 		StartTime:   startTime,
-		Status:      status,
 		HistorySize: s.config.HistoryLimit,
 		Metadata:    map[string]string{},
 	}
