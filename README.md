@@ -302,10 +302,10 @@ Manage tmux sessions for long-running processes
 # List active tmux sessions
 gwq tmux list
 # Output:
-# SESSION              DURATION
-# ● run/npm-myapp     2 hours
-# ● build/make-project 30 mins
-# ● test/go-tests     1 hour
+# SESSION            DURATION   WORKING_DIR
+# run/npm-myapp      2 hours    ~/ghq/github.com/d-kuro/gwq
+# build/make-project 30 mins    ~/projects/myapp
+# test/go-tests      1 hour     ~/worktrees/myapp-feature
 
 # Run command in new tmux session
 gwq tmux run "npm run dev"

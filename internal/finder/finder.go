@@ -357,7 +357,7 @@ func (f *Finder) buildSessionFinderOptions(sessions []*tmux.Session) []fuzzyfind
 func (f *Finder) formatSessionForDisplay(sessions []*tmux.Session) func(int) string {
 	return func(i int) string {
 		session := sessions[i]
-		return fmt.Sprintf("● %s/%s - %s", session.Context, session.Identifier, session.Command)
+		return fmt.Sprintf("%s/%s - %s", session.Context, session.Identifier, session.Command)
 	}
 }
 

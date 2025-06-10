@@ -18,11 +18,10 @@ import (
 )
 
 var (
-	tmuxListVerbose bool
-	tmuxListJSON    bool
-	tmuxListCSV     bool
-	tmuxListWatch   bool
-	tmuxListSort    string
+	tmuxListJSON  bool
+	tmuxListCSV   bool
+	tmuxListWatch bool
+	tmuxListSort  string
 )
 
 var tmuxListCmd = &cobra.Command{
@@ -30,13 +29,10 @@ var tmuxListCmd = &cobra.Command{
 	Short: "List active tmux sessions",
 	Long: `List active tmux sessions with their information.
 
-Shows running tmux sessions with context, identifier, duration and command.
+Shows running tmux sessions with context, identifier, duration and working directory.
 Supports various output formats and real-time monitoring.`,
-	Example: `  # Simple session list
+	Example: `  # List all sessions
   gwq tmux list
-
-  # Detailed information
-  gwq tmux list --verbose
 
   # JSON output for scripting  
   gwq tmux list --json
@@ -52,7 +48,6 @@ Supports various output formats and real-time monitoring.`,
 func init() {
 	tmuxCmd.AddCommand(tmuxListCmd)
 
-	tmuxListCmd.Flags().BoolVarP(&tmuxListVerbose, "verbose", "v", false, "Show detailed information")
 	tmuxListCmd.Flags().BoolVar(&tmuxListJSON, "json", false, "Output as JSON")
 	tmuxListCmd.Flags().BoolVar(&tmuxListCSV, "csv", false, "Output as CSV")
 	tmuxListCmd.Flags().BoolVarP(&tmuxListWatch, "watch", "w", false, "Real-time monitoring")
@@ -90,7 +85,7 @@ func runTmuxListOnce(sessionManager *tmux.SessionManager, cfg *models.Config) er
 		return outputSessionsCSV(sortedSessions)
 	default:
 		printer := ui.New(&cfg.UI)
-		return outputSessionsTable(sortedSessions, printer, tmuxListVerbose)
+		return outputSessionsTable(sortedSessions, printer)
 	}
 }
 
@@ -120,7 +115,7 @@ func runTmuxListWatch(sessionManager *tmux.SessionManager, cfg *models.Config) e
 		fmt.Printf("tmux Sessions - Updated: %s\n", time.Now().Format("15:04:05"))
 		fmt.Printf("Total: %d sessions\n\n", len(sessions))
 
-		if err := outputSessionsTable(sortedSessions, printer, tmuxListVerbose); err != nil {
+		if err := outputSessionsTable(sortedSessions, printer); err != nil {
 			return err
 		}
 
@@ -187,7 +182,7 @@ func outputSessionsCSV(sessions []*tmux.Session) error {
 	return nil
 }
 
-func outputSessionsTable(sessions []*tmux.Session, printer *ui.Printer, verbose bool) error {
+func outputSessionsTable(sessions []*tmux.Session, printer *ui.Printer) error {
 	if len(sessions) == 0 {
 		printer.PrintInfo("No tmux sessions found")
 		return nil
@@ -196,32 +191,15 @@ func outputSessionsTable(sessions []*tmux.Session, printer *ui.Printer, verbose 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
 	defer func() { _ = w.Flush() }()
 
-	if verbose {
-		_, _ = fmt.Fprintln(w, "SESSION\tDURATION\tWORKING_DIR")
-	} else {
-		_, _ = fmt.Fprintln(w, "SESSION\tDURATION")
-	}
+	_, _ = fmt.Fprintln(w, "SESSION\tDURATION\tWORKING_DIR")
 
 	for _, session := range sessions {
-		// Format session identifier with marker
-		var sessionWithMarker string
 		sessionIdentifier := session.Context + "/" + session.Identifier
-		if printer != nil && printer.UseIcons() {
-			sessionWithMarker = "● " + sessionIdentifier
-		} else {
-			sessionWithMarker = "  " + sessionIdentifier
-		}
-
 		duration := formatSessionDuration(session.StartTime)
-
-		if verbose {
-			workdir := formatWorkingDir(session.WorkingDir, printer)
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n",
-				sessionWithMarker, duration, workdir)
-		} else {
-			_, _ = fmt.Fprintf(w, "%s\t%s\n",
-				sessionWithMarker, duration)
-		}
+		workdir := formatWorkingDir(session.WorkingDir, printer)
+		
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n",
+			sessionIdentifier, duration, workdir)
 	}
 
 	return nil

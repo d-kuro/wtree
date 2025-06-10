@@ -38,6 +38,7 @@ gwq tmux kill --all
 - Added context cancellation support for tmux operations
 - Removed unused code and configuration fields for cleaner implementation
 - Enhanced fuzzy finder with session selection capabilities
+- Simplified tmux list display by removing bullet markers and making working directory visible by default
 
 ### 📖 Documentation
 - Updated README with comprehensive tmux subcommand documentation
