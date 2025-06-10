@@ -126,21 +126,13 @@ func findMatchingSessions(sessions []*tmux.Session, pattern string) []*tmux.Sess
 	return matches
 }
 
+func createSessionFinder(cfg *models.Config) *finder.Finder {
+	// Create minimal git instance for finder (not used for sessions)
+	g := &git.Git{}
+	return finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
+}
+
 func selectSessionWithFinder(sessions []*tmux.Session, cfg *models.Config) (*tmux.Session, error) {
-	if len(sessions) == 0 {
-		return nil, fmt.Errorf("no sessions available")
-	}
-
-	// Create finder
-	g := &git.Git{} // Temporary git instance (not used for sessions)
-	f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
-
-	// Use fuzzy finder for session selection
-	selected, err := f.SelectSession(sessions)
-	if err != nil {
-		return nil, err
-	}
-
-	return selected, nil
+	return createSessionFinder(cfg).SelectSession(sessions)
 }
 

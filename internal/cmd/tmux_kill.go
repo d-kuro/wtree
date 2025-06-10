@@ -6,8 +6,6 @@ import (
 	"strings"
 
 	"github.com/d-kuro/gwq/internal/config"
-	"github.com/d-kuro/gwq/internal/finder"
-	"github.com/d-kuro/gwq/internal/git"
 	"github.com/d-kuro/gwq/internal/tmux"
 	"github.com/d-kuro/gwq/pkg/models"
 	"github.com/spf13/cobra"
@@ -132,21 +130,7 @@ func filterCompletedSessions(sessions []*tmux.Session) []*tmux.Session {
 }
 
 func selectSessionsToKillWithFinder(sessions []*tmux.Session, cfg *models.Config) ([]*tmux.Session, error) {
-	if len(sessions) == 0 {
-		return nil, fmt.Errorf("no sessions available")
-	}
-
-	// Create finder
-	g := &git.Git{} // Temporary git instance (not used for sessions)
-	f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
-
-	// Use fuzzy finder for multiple session selection
-	selected, err := f.SelectMultipleSessions(sessions)
-	if err != nil {
-		return nil, err
-	}
-
-	return selected, nil
+	return createSessionFinder(cfg).SelectMultipleSessions(sessions)
 }
 
 func confirmKillSessions(sessions []*tmux.Session) bool {
@@ -166,25 +150,28 @@ func confirmKillSessions(sessions []*tmux.Session) bool {
 }
 
 func killSessions(sessionManager *tmux.SessionManager, sessions []*tmux.Session) error {
-	var errors []string
+	var failedCount int
 
 	for _, session := range sessions {
 		fmt.Printf("Terminating session %s/%s...", session.Context, session.Identifier)
 
-		err := sessionManager.KillSessionDirect(session)
-		if err != nil {
+		if err := sessionManager.KillSessionDirect(session); err != nil {
 			fmt.Printf(" FAILED: %v\n", err)
-			errors = append(errors, fmt.Sprintf("%s: %v", session.SessionName, err))
+			failedCount++
 		} else {
 			fmt.Printf(" OK\n")
 		}
 	}
 
-	if len(errors) > 0 {
-		return fmt.Errorf("some sessions failed to terminate:\n%s", strings.Join(errors, "\n"))
+	successCount := len(sessions) - failedCount
+	fmt.Printf("\nTerminated %d session(s)", successCount)
+	
+	if failedCount > 0 {
+		fmt.Printf(" (%d failed)", failedCount)
+		return fmt.Errorf("%d out of %d sessions failed to terminate", failedCount, len(sessions))
 	}
-
-	fmt.Printf("\nSuccessfully terminated %d session(s)\n", len(sessions))
+	
+	fmt.Println()
 	return nil
 }
 

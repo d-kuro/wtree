@@ -175,34 +175,9 @@ func (f *Finder) SelectSession(sessions []*tmux.Session) (*tmux.Session, error) 
 		return nil, fmt.Errorf("no sessions available")
 	}
 
-	opts := []fuzzyfinder.Option{
-		fuzzyfinder.WithPromptString("Select session> "),
-	}
-
-	if f.config.Preview {
-		opts = append(opts, fuzzyfinder.WithPreviewWindow(func(i, w, h int) string {
-			if i == -1 {
-				return ""
-			}
-			return f.generateSessionPreview(sessions[i], h)
-		}))
-	}
-
-	idx, err := fuzzyfinder.Find(
-		sessions,
-		func(i int) string {
-			session := sessions[i]
-			marker := ""
-			if session.Status == tmux.StatusRunning {
-				marker = "● "
-			} else {
-				marker = "  "
-			}
-			return fmt.Sprintf("%s%s/%s (%s) - %s", marker, session.Context, session.Identifier, session.Status, session.Command)
-		},
-		opts...,
-	)
-
+	opts := f.buildSessionFinderOptions(sessions)
+	
+	idx, err := fuzzyfinder.Find(sessions, f.formatSessionForDisplay(sessions), opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -216,34 +191,10 @@ func (f *Finder) SelectMultipleSessions(sessions []*tmux.Session) ([]*tmux.Sessi
 		return nil, fmt.Errorf("no sessions available")
 	}
 
-	opts := []fuzzyfinder.Option{
-		fuzzyfinder.WithPromptString("Select sessions (Tab to select multiple)> "),
-	}
-
-	if f.config.Preview {
-		opts = append(opts, fuzzyfinder.WithPreviewWindow(func(i, w, h int) string {
-			if i == -1 {
-				return ""
-			}
-			return f.generateSessionPreview(sessions[i], h)
-		}))
-	}
-
-	indices, err := fuzzyfinder.FindMulti(
-		sessions,
-		func(i int) string {
-			session := sessions[i]
-			marker := ""
-			if session.Status == tmux.StatusRunning {
-				marker = "● "
-			} else {
-				marker = "  "
-			}
-			return fmt.Sprintf("%s%s/%s (%s) - %s", marker, session.Context, session.Identifier, session.Status, session.Command)
-		},
-		opts...,
-	)
-
+	opts := f.buildSessionFinderOptions(sessions)
+	opts[0] = fuzzyfinder.WithPromptString("Select sessions (Tab to select multiple)> ")
+	
+	indices, err := fuzzyfinder.FindMulti(sessions, f.formatSessionForDisplay(sessions), opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -383,5 +334,35 @@ func truncateMessage(message string, maxLen int) string {
 		return message[:maxLen-3] + "..."
 	}
 	return message
+}
+
+// buildSessionFinderOptions builds common options for session fuzzy finder.
+func (f *Finder) buildSessionFinderOptions(sessions []*tmux.Session) []fuzzyfinder.Option {
+	opts := []fuzzyfinder.Option{
+		fuzzyfinder.WithPromptString("Select session> "),
+	}
+
+	if f.config.Preview {
+		opts = append(opts, fuzzyfinder.WithPreviewWindow(func(i, w, h int) string {
+			if i == -1 {
+				return ""
+			}
+			return f.generateSessionPreview(sessions[i], h)
+		}))
+	}
+
+	return opts
+}
+
+// formatSessionForDisplay formats a session for display in the fuzzy finder.
+func (f *Finder) formatSessionForDisplay(sessions []*tmux.Session) func(int) string {
+	return func(i int) string {
+		session := sessions[i]
+		marker := "  "
+		if session.Status == tmux.StatusRunning {
+			marker = "● "
+		}
+		return fmt.Sprintf("%s%s/%s (%s) - %s", marker, session.Context, session.Identifier, session.Status, session.Command)
+	}
 }
 
