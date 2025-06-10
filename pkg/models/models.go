@@ -34,6 +34,7 @@ type Config struct {
 	Finder   FinderConfig   `mapstructure:"finder"`   // Fuzzy finder configuration
 	Naming   NamingConfig   `mapstructure:"naming"`   // Naming convention configuration
 	UI       UIConfig       `mapstructure:"ui"`       // UI-related configuration
+	Tmux     TmuxConfig     `mapstructure:"tmux"`     // Tmux session configuration
 }
 
 // WorktreeConfig contains worktree-specific configuration options.
@@ -60,6 +61,21 @@ type NamingConfig struct {
 type UIConfig struct {
 	Icons     bool `mapstructure:"icons"`      // Enable icon display
 	TildeHome bool `mapstructure:"tilde_home"` // Display home directory as ~
+}
+
+// TmuxConfig contains tmux session management configuration.
+type TmuxConfig struct {
+	Enabled              bool   `mapstructure:"enabled"`                // Enable tmux integration
+	AutoCreateSession    bool   `mapstructure:"auto_create_session"`    // Auto session creation
+	DetachOnCreate       bool   `mapstructure:"detach_on_create"`       // Behavior on session creation
+	AutoCleanupCompleted bool   `mapstructure:"auto_cleanup_completed"` // Auto cleanup completed sessions
+	TmuxCommand          string `mapstructure:"tmux_command"`           // Tmux command path
+	DefaultShell         string `mapstructure:"default_shell"`          // Default shell for sessions
+	SessionTimeout       string `mapstructure:"session_timeout"`        // Session timeout duration
+	KeepAlive            bool   `mapstructure:"keep_alive"`             // Keep sessions alive
+	HistoryLimit         int    `mapstructure:"history_limit"`          // Tmux history limit
+	HistoryAutoSave      bool   `mapstructure:"history_auto_save"`      // Auto save history
+	HistorySaveDir       string `mapstructure:"history_save_dir"`       // History save directory
 }
 
 // WorktreeStatus represents the current status of a worktree.

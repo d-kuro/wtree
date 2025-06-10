@@ -50,6 +50,17 @@ func Init() error {
 	})
 	viper.SetDefault("ui.icons", true)
 	viper.SetDefault("ui.tilde_home", true)
+	viper.SetDefault("tmux.enabled", true)
+	viper.SetDefault("tmux.auto_create_session", true)
+	viper.SetDefault("tmux.detach_on_create", true)
+	viper.SetDefault("tmux.auto_cleanup_completed", false)
+	viper.SetDefault("tmux.tmux_command", "tmux")
+	viper.SetDefault("tmux.default_shell", "/bin/bash")
+	viper.SetDefault("tmux.session_timeout", "24h")
+	viper.SetDefault("tmux.keep_alive", true)
+	viper.SetDefault("tmux.history_limit", 50000)
+	viper.SetDefault("tmux.history_auto_save", true)
+	viper.SetDefault("tmux.history_save_dir", "~/.gwq/history")
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {

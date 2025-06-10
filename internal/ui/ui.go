@@ -23,6 +23,11 @@ func (p *Printer) UseIcons() bool {
 	return p.useIcons
 }
 
+// UseTildeHome returns whether home directory should be displayed as ~.
+func (p *Printer) UseTildeHome() bool {
+	return p.useTildeHome
+}
+
 // New creates a new Printer instance.
 func New(config *models.UIConfig) *Printer {
 	return &Printer{
