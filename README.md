@@ -325,8 +325,8 @@ gwq tmux attach dev-server
 # Kill session
 gwq tmux kill dev-server
 
-# Kill all completed sessions
-gwq tmux kill --completed
+# Kill all sessions (with confirmation)
+gwq tmux kill --all
 
 # Watch session status in real-time
 gwq tmux list --watch

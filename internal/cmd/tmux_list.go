@@ -123,8 +123,8 @@ func runTmuxListWatch(sessionManager *tmux.SessionManager, cfg *models.Config) e
 		sortedSessions := applySessionSort(filteredSessions, tmuxListSort)
 
 		fmt.Printf("tmux Sessions - Updated: %s\n", time.Now().Format("15:04:05"))
-		fmt.Printf("Total: %d | Running: %d | Completed: %d\n\n",
-			len(sessions), countByStatus(sessions, tmux.StatusRunning), countByStatus(sessions, tmux.StatusCompleted))
+		fmt.Printf("Total: %d | Running: %d\n\n",
+			len(sessions), countByStatus(sessions, tmux.StatusRunning))
 
 		if err := outputSessionsTable(sortedSessions, printer, tmuxListVerbose); err != nil {
 			return err
@@ -148,29 +148,14 @@ func runTmuxListWatch(sessionManager *tmux.SessionManager, cfg *models.Config) e
 }
 
 func applySessionFilters(sessions []*tmux.Session, filter string) []*tmux.Session {
-	if filter == "" {
+	if filter == "" || filter != "running" {
 		return sessions
 	}
 
 	var filtered []*tmux.Session
 	for _, session := range sessions {
-		switch filter {
-		case "running":
-			if session.Status == tmux.StatusRunning {
-				filtered = append(filtered, session)
-			}
-		case "completed":
-			if session.Status == tmux.StatusCompleted {
-				filtered = append(filtered, session)
-			}
-		case "failed":
-			if session.Status == tmux.StatusFailed {
-				filtered = append(filtered, session)
-			}
-		case "detached":
-			if session.Status == tmux.StatusDetached {
-				filtered = append(filtered, session)
-			}
+		if session.Status == tmux.StatusRunning {
+			filtered = append(filtered, session)
 		}
 	}
 
@@ -265,18 +250,10 @@ func outputSessionsTable(sessions []*tmux.Session, printer *ui.Printer, verbose 
 }
 
 func formatSessionStatus(status tmux.Status) string {
-	switch status {
-	case tmux.StatusRunning:
+	if status == tmux.StatusRunning {
 		return "running"
-	case tmux.StatusCompleted:
-		return "completed"
-	case tmux.StatusFailed:
-		return "failed"
-	case tmux.StatusDetached:
-		return "detached"
-	default:
-		return string(status)
 	}
+	return string(status)
 }
 
 func formatSessionDuration(startTime time.Time) string {

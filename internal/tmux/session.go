@@ -7,10 +7,7 @@ import (
 type Status string
 
 const (
-	StatusRunning   Status = "running"
-	StatusCompleted Status = "completed"
-	StatusFailed    Status = "failed"
-	StatusDetached  Status = "detached"
+	StatusRunning Status = "running"
 )
 
 type Session struct {

@@ -9,7 +9,7 @@
   - **Interactive Session Selection**: Fuzzy finder integration for easy session management
   - **Multiple Output Formats**: Table, JSON, and CSV formats for integration and automation
   - **Watch Mode**: Real-time monitoring of session status with `--watch` flag
-  - **Batch Operations**: Kill multiple sessions, filter by status, cleanup completed sessions
+  - **Batch Operations**: Kill multiple sessions with interactive selection
   - **Auto-cleanup Option**: Sessions can automatically terminate when commands complete
   - **Context Cancellation**: Proper handling of long-running operations with Go context
 
@@ -30,8 +30,8 @@ gwq tmux list --watch
 # Attach to running session
 gwq tmux attach api-server
 
-# Cleanup completed sessions
-gwq tmux kill --completed
+# Kill all sessions with confirmation
+gwq tmux kill --all
 ```
 
 ### 🔧 Code Improvements

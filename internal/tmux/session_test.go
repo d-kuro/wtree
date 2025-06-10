@@ -21,24 +21,8 @@ func TestDefaultSessionConfig(t *testing.T) {
 }
 
 func TestSessionStatusConstants(t *testing.T) {
-	statuses := []Status{
-		StatusRunning,
-		StatusCompleted,
-		StatusFailed,
-		StatusDetached,
-	}
-	
-	expectedStatuses := []string{
-		"running",
-		"completed",
-		"failed",
-		"detached",
-	}
-	
-	for i, status := range statuses {
-		if string(status) != expectedStatuses[i] {
-			t.Errorf("Expected status %d to be '%s', got '%s'", i, expectedStatuses[i], string(status))
-		}
+	if string(StatusRunning) != "running" {
+		t.Errorf("Expected StatusRunning to be 'running', got '%s'", string(StatusRunning))
 	}
 }
 

@@ -14,7 +14,6 @@ import (
 var (
 	tmuxKillInteractive bool
 	tmuxKillAll         bool
-	tmuxKillCompleted   bool
 	tmuxKillForce       bool
 )
 
@@ -34,9 +33,6 @@ If no pattern is provided, an interactive session selector will be displayed.`,
   # Terminate all sessions (with confirmation)
   gwq tmux kill --all
 
-  # Cleanup only completed sessions
-  gwq tmux kill --completed
-
   # Force kill without confirmation
   gwq tmux kill --all --force`,
 	RunE: runTmuxKill,
@@ -47,7 +43,6 @@ func init() {
 
 	tmuxKillCmd.Flags().BoolVarP(&tmuxKillInteractive, "interactive", "i", false, "Always use interactive selection")
 	tmuxKillCmd.Flags().BoolVar(&tmuxKillAll, "all", false, "Terminate all sessions")
-	tmuxKillCmd.Flags().BoolVar(&tmuxKillCompleted, "completed", false, "Terminate only completed sessions")
 	tmuxKillCmd.Flags().BoolVar(&tmuxKillForce, "force", false, "Skip confirmation prompts")
 }
 
@@ -75,8 +70,6 @@ func runTmuxKill(cmd *cobra.Command, args []string) error {
 	switch {
 	case tmuxKillAll:
 		sessionsToKill = sessions
-	case tmuxKillCompleted:
-		sessionsToKill = filterCompletedSessions(sessions)
 	case len(args) == 0 || tmuxKillInteractive:
 		// Interactive selection using fuzzy finder
 		selected, err := selectSessionsToKillWithFinder(sessions, cfg)
@@ -119,15 +112,6 @@ func runTmuxKill(cmd *cobra.Command, args []string) error {
 	return killSessions(sessionManager, sessionsToKill)
 }
 
-func filterCompletedSessions(sessions []*tmux.Session) []*tmux.Session {
-	var completed []*tmux.Session
-	for _, session := range sessions {
-		if session.Status == tmux.StatusCompleted || session.Status == tmux.StatusFailed {
-			completed = append(completed, session)
-		}
-	}
-	return completed
-}
 
 func selectSessionsToKillWithFinder(sessions []*tmux.Session, cfg *models.Config) ([]*tmux.Session, error) {
 	return createSessionFinder(cfg).SelectMultipleSessions(sessions)
@@ -176,17 +160,9 @@ func killSessions(sessionManager *tmux.SessionManager, sessions []*tmux.Session)
 }
 
 func getStatusIndicator(status tmux.Status) string {
-	switch status {
-	case tmux.StatusRunning:
+	if status == tmux.StatusRunning {
 		return "● "
-	case tmux.StatusCompleted:
-		return "✓ "
-	case tmux.StatusFailed:
-		return "✗ "
-	case tmux.StatusDetached:
-		return "◦ "
-	default:
-		return "  "
 	}
+	return "  "
 }
 
