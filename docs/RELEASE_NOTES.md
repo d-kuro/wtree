@@ -1,5 +1,51 @@
 # gwq Release Notes
 
+## v0.0.4 (Unreleased)
+
+### ✨ New Features
+- **Tmux Session Management** (#11): Run and manage long-running processes in persistent tmux sessions
+  - **Session Lifecycle Management**: Create, list, attach, and kill tmux sessions for any command
+  - **Persistence Across Disconnections**: Sessions continue running even if terminal or SSH connection drops
+  - **Interactive Session Selection**: Fuzzy finder integration for easy session management
+  - **Multiple Output Formats**: Table, JSON, and CSV formats for integration and automation
+  - **Watch Mode**: Real-time monitoring of session status with `--watch` flag
+  - **Batch Operations**: Kill multiple sessions with interactive selection
+  - **Auto-cleanup Option**: Sessions can automatically terminate when commands complete
+  - **Context Cancellation**: Proper handling of long-running operations with Go context
+
+### 🎯 Tmux Command Examples
+```bash
+# Run development server in tmux session
+gwq tmux run "npm run dev"
+
+# Run with custom identifier
+gwq tmux run --id api-server "python app.py"
+
+# Run in specific worktree
+gwq tmux run -w feature/auth "make test"
+
+# List all sessions with real-time updates
+gwq tmux list --watch
+
+# Attach to running session
+gwq tmux attach api-server
+
+# Kill all sessions with confirmation
+gwq tmux kill --all
+```
+
+### 🔧 Code Improvements
+- Added context cancellation support for tmux operations
+- Removed unused code and configuration fields for cleaner implementation
+- Enhanced fuzzy finder with session selection capabilities
+- Simplified tmux list display by removing bullet markers and making working directory visible by default
+
+### 📖 Documentation
+- Updated README with comprehensive tmux subcommand documentation
+- Added tmux session management to feature list
+- Included tmux configuration options
+- Enhanced AI workflow examples with tmux integration
+
 ## v0.0.3 (2025-06-09)
 
 ### ✨ New Features

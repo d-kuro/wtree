@@ -56,17 +56,17 @@ func getVersionString() string {
 	if !ok {
 		return fmt.Sprintf("%s (commit: %s, built: %s)", version, commit, date)
 	}
-	
+
 	// Extract version information from build info
 	buildVersion := version
 	buildCommit := commit
 	buildDate := date
-	
+
 	// Try to get version from module
 	if info.Main.Version != "" && info.Main.Version != "(devel)" {
 		buildVersion = info.Main.Version
 	}
-	
+
 	// Try to get commit and date from VCS settings
 	for _, setting := range info.Settings {
 		switch setting.Key {
@@ -83,6 +83,6 @@ func getVersionString() string {
 			}
 		}
 	}
-	
+
 	return fmt.Sprintf("%s (commit: %s, built: %s)", buildVersion, buildCommit, buildDate)
 }

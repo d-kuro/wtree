@@ -82,6 +82,7 @@ gwq remove feature/old-ui
 - **Branch Management**: Optional branch deletion when removing worktrees
 - **Home Directory Display**: Option to display paths with `~` instead of full home directory path
 - **Worktree Status Dashboard**: Monitor all worktrees' git status, changes, and activity at a glance
+- **Tmux Session Management**: Run and manage long-running processes in persistent tmux sessions
 
 ## Global Worktree Management
 
@@ -293,6 +294,54 @@ gwq config set worktree.basedir ~/worktrees
 gwq config set naming.template "{{.Repository}}-{{.Branch}}"
 ```
 
+### `gwq tmux`
+
+Manage tmux sessions for long-running processes
+
+```bash
+# List active tmux sessions
+gwq tmux list
+# Output:
+# SESSION            DURATION   WORKING_DIR
+# run/npm-myapp      2 hours    ~/ghq/github.com/d-kuro/gwq
+# build/make-project 30 mins    ~/projects/myapp
+# test/go-tests      1 hour     ~/worktrees/myapp-feature
+
+# Run command in new tmux session
+gwq tmux run "npm run dev"
+
+# Run with custom identifier
+gwq tmux run --id dev-server "npm run dev"
+
+# Run in specific worktree
+gwq tmux run -w feature/auth "make test"
+
+# Run with auto-cleanup (session deleted when command completes)
+gwq tmux run --auto-cleanup "make build"
+
+# Attach to running session
+gwq tmux attach dev-server
+
+# Kill session
+gwq tmux kill dev-server
+
+# Kill all sessions (with confirmation)
+gwq tmux kill --all
+
+# Watch session status in real-time
+gwq tmux list --watch
+
+# JSON output for automation
+gwq tmux list --json
+```
+
+This feature is particularly useful for:
+- **Development Servers**: Keep dev servers running across terminal sessions
+- **Long Builds**: Monitor build processes without keeping terminal open
+- **Test Suites**: Run extensive test suites in the background
+- **AI Agent Tasks**: Let AI agents run long tasks without blocking your terminal
+- **Remote Work**: Sessions persist even if SSH connection drops
+
 ### `gwq version`
 
 Display version information
@@ -375,6 +424,14 @@ sanitize_chars = { "/" = "-", ":" = "-" }
 icons = true
 # Display home directory as ~ in paths
 tilde_home = true
+
+[tmux]
+# Enable tmux integration
+enabled = true
+# Tmux command to use
+tmux_command = "tmux"
+# History limit for tmux sessions
+history_limit = 50000
 ```
 
 ## Advanced Usage
@@ -420,6 +477,16 @@ cd $(gwq get login) && claude
 
 # Monitor all AI agent activity
 gwq status --watch  # Shows real-time status of all worktrees
+
+# Run long-running AI tasks in tmux sessions
+gwq tmux run --id ai-migration-auth "claude migrate auth module"
+gwq tmux run --id ai-migration-api "claude migrate api module"
+
+# Monitor AI task progress
+gwq tmux list --watch
+
+# Attach to see AI output
+gwq tmux attach ai-migration-auth
 ```
 
 ### Batch Operations

@@ -48,7 +48,7 @@ func (g *Git) ListWorktrees() ([]models.Worktree, error) {
 	for i := 0; i < len(lines); i++ {
 		if strings.HasPrefix(lines[i], "worktree ") {
 			path := strings.TrimPrefix(lines[i], "worktree ")
-			
+
 			var branch, commitHash string
 			isMain := false
 
@@ -103,7 +103,7 @@ func (g *Git) ListWorktrees() ([]models.Worktree, error) {
 // AddWorktree creates a new worktree.
 func (g *Git) AddWorktree(path, branch string, createBranch bool) error {
 	args := []string{"worktree", "add"}
-	
+
 	if createBranch {
 		args = append(args, "-b", branch, path)
 	} else {
@@ -299,7 +299,6 @@ func (g *Git) GetRepositoryURL() (string, error) {
 	}
 	return strings.TrimSpace(output), nil
 }
-
 
 // RunCommand executes a git command and returns the output (public method).
 func (g *Git) RunCommand(args ...string) (string, error) {

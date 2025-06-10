@@ -17,9 +17,9 @@ import (
 // outputJSON outputs worktree statuses in JSON format.
 func outputJSON(statuses []*models.WorktreeStatus) error {
 	summary := calculateSummary(statuses)
-	
+
 	output := struct {
-		Summary   statusSummary             `json:"summary"`
+		Summary   statusSummary            `json:"summary"`
 		Worktrees []*models.WorktreeStatus `json:"worktrees"`
 	}{
 		Summary:   summary,
@@ -37,7 +37,7 @@ func outputCSV(statuses []*models.WorktreeStatus) error {
 	defer writer.Flush()
 
 	headers := []string{
-		"branch", "status", "modified", "added", "deleted", 
+		"branch", "status", "modified", "added", "deleted",
 		"ahead", "behind", "last_activity", "process",
 	}
 	if err := writer.Write(headers); err != nil {
@@ -95,7 +95,7 @@ func outputTable(statuses []*models.WorktreeStatus, printer *ui.Printer, verbose
 		if s.IsCurrent && printer != nil && printer.UseIcons() {
 			branchWithMarker = "● " + s.Branch
 		} else {
-			branchWithMarker = "  " + s.Branch  // Two spaces to match "● " width
+			branchWithMarker = "  " + s.Branch // Two spaces to match "● " width
 		}
 
 		status := formatStatusNoColor(s.Status)
@@ -212,4 +212,3 @@ func formatProcess(processes []models.ProcessInfo) string {
 	}
 	return strings.Join(procs, ",")
 }
-

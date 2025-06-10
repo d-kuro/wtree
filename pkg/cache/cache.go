@@ -8,8 +8,8 @@ import (
 
 // Entry represents a cached value with expiration time.
 type Entry[T any] struct {
-	Value      T
-	ExpiresAt  time.Time
+	Value     T
+	ExpiresAt time.Time
 }
 
 // Cache provides a thread-safe generic cache implementation.

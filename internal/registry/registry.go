@@ -12,11 +12,11 @@ import (
 
 // WorktreeEntry represents a registered worktree.
 type WorktreeEntry struct {
-	Repository  string    `json:"repository"`
-	Branch      string    `json:"branch"`
-	Path        string    `json:"path"`
-	Hash        string    `json:"hash"`
-	IsMain      bool      `json:"is_main"`
+	Repository   string    `json:"repository"`
+	Branch       string    `json:"branch"`
+	Path         string    `json:"path"`
+	Hash         string    `json:"hash"`
+	IsMain       bool      `json:"is_main"`
 	RegisteredAt time.Time `json:"registered_at"`
 }
 
@@ -34,23 +34,23 @@ func New() (*Registry, error) {
 		home, _ := os.UserHomeDir()
 		configDir = filepath.Join(home, ".config")
 	}
-	
+
 	registryDir := filepath.Join(configDir, "gwq")
 	if err := os.MkdirAll(registryDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create registry directory: %w", err)
 	}
-	
+
 	registryPath := filepath.Join(registryDir, "registry.json")
-	
+
 	r := &Registry{
 		entries: make(map[string]*WorktreeEntry),
 		path:    registryPath,
 	}
-	
+
 	if err := r.load(); err != nil {
 		return nil, err
 	}
-	
+
 	return r, nil
 }
 
@@ -64,24 +64,24 @@ func (r *Registry) load() error {
 		}
 		return fmt.Errorf("failed to read registry: %w", err)
 	}
-	
+
 	if len(data) == 0 {
 		return nil
 	}
-	
+
 	var entries []*WorktreeEntry
 	if err := json.Unmarshal(data, &entries); err != nil {
 		return fmt.Errorf("failed to unmarshal registry: %w", err)
 	}
-	
+
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	r.entries = make(map[string]*WorktreeEntry)
 	for _, entry := range entries {
 		r.entries[entry.Path] = entry
 	}
-	
+
 	return nil
 }
 
@@ -93,16 +93,16 @@ func (r *Registry) save() error {
 		entries = append(entries, entry)
 	}
 	r.mu.RUnlock()
-	
+
 	data, err := json.MarshalIndent(entries, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal registry: %w", err)
 	}
-	
+
 	if err := os.WriteFile(r.path, data, 0644); err != nil {
 		return fmt.Errorf("failed to write registry: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -112,7 +112,7 @@ func (r *Registry) Register(entry *WorktreeEntry) error {
 	entry.RegisteredAt = time.Now()
 	r.entries[entry.Path] = entry
 	r.mu.Unlock()
-	
+
 	return r.save()
 }
 
@@ -121,7 +121,7 @@ func (r *Registry) Unregister(path string) error {
 	r.mu.Lock()
 	delete(r.entries, path)
 	r.mu.Unlock()
-	
+
 	return r.save()
 }
 
@@ -129,12 +129,12 @@ func (r *Registry) Unregister(path string) error {
 func (r *Registry) List() []*WorktreeEntry {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	entries := make([]*WorktreeEntry, 0, len(r.entries))
 	for _, entry := range r.entries {
 		entries = append(entries, entry)
 	}
-	
+
 	return entries
 }
 
@@ -142,14 +142,14 @@ func (r *Registry) List() []*WorktreeEntry {
 func (r *Registry) ListByRepository(repository string) []*WorktreeEntry {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	var entries []*WorktreeEntry
 	for _, entry := range r.entries {
 		if entry.Repository == repository {
 			entries = append(entries, entry)
 		}
 	}
-	
+
 	return entries
 }
 
@@ -157,7 +157,7 @@ func (r *Registry) ListByRepository(repository string) []*WorktreeEntry {
 func (r *Registry) Get(path string) (*WorktreeEntry, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	entry, ok := r.entries[path]
 	return entry, ok
 }
@@ -166,7 +166,7 @@ func (r *Registry) Get(path string) (*WorktreeEntry, bool) {
 func (r *Registry) Cleanup() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	var toRemove []string
 	for path, entry := range r.entries {
 		// Check if the worktree directory still exists
@@ -175,14 +175,14 @@ func (r *Registry) Cleanup() error {
 			toRemove = append(toRemove, entry.Path)
 		}
 	}
-	
+
 	for _, path := range toRemove {
 		delete(r.entries, path)
 	}
-	
+
 	if len(toRemove) > 0 {
 		return r.save()
 	}
-	
+
 	return nil
 }

@@ -25,7 +25,7 @@ func TestGetConfigDir(t *testing.T) {
 			t.Errorf("getConfigDir() should end with 'gwq', got %s", dir)
 		}
 	})
-	
+
 	// getConfigDir uses os.UserConfigDir which doesn't respect XDG_CONFIG_HOME on macOS
 	// So we just verify the basic behavior
 }
@@ -33,11 +33,11 @@ func TestGetConfigDir(t *testing.T) {
 func TestInit(t *testing.T) {
 	// Create temporary directory for config
 	tmpDir := t.TempDir()
-	
+
 	// Set test environment
 	t.Setenv("HOME", tmpDir)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmpDir, ".config"))
-	
+
 	// Reset viper to clean state
 	viper.Reset()
 
@@ -71,7 +71,7 @@ func TestInit(t *testing.T) {
 	if !viper.GetBool("ui.icons") {
 		t.Errorf("Default ui.icons should be true")
 	}
-	
+
 	// Cleanup viper for other tests
 	t.Cleanup(func() {
 		viper.Reset()
@@ -177,11 +177,11 @@ func TestGettersAndSetters(t *testing.T) {
 	// Test Set and Get
 	testKey := "test.key"
 	testValue := "test-value"
-	
+
 	// Note: In real usage, Set would write to config file
 	// For testing, we'll just verify viper operations
 	viper.Set(testKey, testValue)
-	
+
 	if got := Get(testKey); got != testValue {
 		t.Errorf("Get(%s) = %v, want %v", testKey, got, testValue)
 	}

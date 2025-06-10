@@ -54,18 +54,18 @@ If no pattern is provided, all worktrees will be shown in the fuzzy finder.`,
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 		}
-		
+
 		if len(args) == 0 || (len(args) == 1 && !strings.HasPrefix(args[0], "-")) {
 			return getWorktreeCompletions(cmd, args, toComplete)
 		}
-		
+
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(execCmd)
-	
+
 	execCmd.Flags().BoolVarP(&execGlobal, "global", "g", false, "Execute in global worktree")
 	execCmd.Flags().BoolVarP(&execStay, "stay", "s", false, "Stay in worktree directory after command execution")
 }
@@ -75,7 +75,7 @@ func runExec(cmd *cobra.Command, args []string) error {
 	var pattern string
 	var commandArgs []string
 	dashDashIndex := -1
-	
+
 	// Parse flags manually
 	i := 0
 	for i < len(args) {
@@ -84,7 +84,7 @@ func runExec(cmd *cobra.Command, args []string) error {
 			dashDashIndex = i
 			break
 		}
-		
+
 		switch arg {
 		case "-g", "--global":
 			execGlobal = true
@@ -105,34 +105,34 @@ func runExec(cmd *cobra.Command, args []string) error {
 			i++
 		}
 	}
-	
+
 	if dashDashIndex == -1 {
 		return fmt.Errorf("missing -- separator. Use: gwq exec [pattern] -- command [args...]")
 	}
-	
+
 	// Extract command and its arguments
 	if dashDashIndex+1 >= len(args) {
 		return fmt.Errorf("no command specified after --")
 	}
 	commandArgs = args[dashDashIndex+1:]
-	
+
 	cfg, err := config.Load()
 	if err != nil {
 		return err
 	}
 
 	var worktreePath string
-	
+
 	if execGlobal {
 		worktreePath, err = getGlobalWorktreePathForExec(cfg, pattern)
 	} else {
 		worktreePath, err = getLocalWorktreePathForExec(cfg, pattern)
 	}
-	
+
 	if err != nil {
 		return err
 	}
-	
+
 	// Execute the command in the worktree directory
 	return executeInWorktree(worktreePath, commandArgs, execStay)
 }
@@ -145,14 +145,14 @@ func getLocalWorktreePathForExec(cfg *models.Config, pattern string) (string, er
 	}
 
 	wm := worktree.New(g, cfg)
-	
+
 	if pattern != "" {
 		// Get all matching worktrees
 		matches, err := wm.GetMatchingWorktrees(pattern)
 		if err != nil {
 			return "", err
 		}
-		
+
 		if len(matches) == 0 {
 			return "", fmt.Errorf("no worktree found matching pattern: %s", pattern)
 		} else if len(matches) == 1 {
@@ -180,7 +180,7 @@ func getLocalWorktreePathForExec(cfg *models.Config, pattern string) (string, er
 		if len(worktrees) == 1 {
 			return worktrees[0].Path, nil
 		}
-		
+
 		f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
 		selected, err := f.SelectWorktree(worktrees)
 		if err != nil {
@@ -205,7 +205,7 @@ func getGlobalWorktreePathForExec(cfg *models.Config, pattern string) (string, e
 	if pattern != "" {
 		// Pattern matching
 		matches := discovery.FilterGlobalWorktrees(entries, pattern)
-		
+
 		if len(matches) == 0 {
 			return "", fmt.Errorf("no worktree matches pattern: %s", pattern)
 		} else if len(matches) == 1 {
@@ -213,7 +213,7 @@ func getGlobalWorktreePathForExec(cfg *models.Config, pattern string) (string, e
 		} else {
 			// Multiple matches - use fuzzy finder
 			worktrees := discovery.ConvertToWorktreeModels(matches, true)
-			
+
 			g := &git.Git{}
 			f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
 			selectedWT, err := f.SelectWorktree(worktrees)
@@ -232,7 +232,7 @@ func getGlobalWorktreePathForExec(cfg *models.Config, pattern string) (string, e
 	} else {
 		// No pattern - show all in fuzzy finder
 		worktrees := discovery.ConvertToWorktreeModels(entries, true)
-		
+
 		g := &git.Git{}
 		f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
 		selectedWT, err := f.SelectWorktree(worktrees)
@@ -263,19 +263,19 @@ func executeInWorktree(worktreePath string, commandArgs []string, stay bool) err
 		if shell == "" {
 			shell = "/bin/sh"
 		}
-		
+
 		fmt.Printf("Launching shell in: %s\n", worktreePath)
 		fmt.Println("Type 'exit' to return to the original directory")
-		
+
 		cmd := exec.Command(shell)
 		cmd.Dir = worktreePath
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-		
+
 		return cmd.Run()
 	}
-	
+
 	// Execute the command in the worktree directory
 	var cmd *exec.Cmd
 	if len(commandArgs) == 1 {
@@ -283,11 +283,11 @@ func executeInWorktree(worktreePath string, commandArgs []string, stay bool) err
 	} else {
 		cmd = exec.Command(commandArgs[0], commandArgs[1:]...)
 	}
-	
+
 	cmd.Dir = worktreePath
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	
+
 	return cmd.Run()
 }

@@ -23,10 +23,10 @@ type StatusCollectorOptions struct {
 
 // StatusCollector collects status information for worktrees.
 type StatusCollector struct {
-	includeProcess  bool
-	fetchRemote     bool
-	staleThreshold  time.Duration
-	basedir         string
+	includeProcess bool
+	fetchRemote    bool
+	staleThreshold time.Duration
+	basedir        string
 }
 
 // NewStatusCollector creates a new status collector instance.
@@ -44,7 +44,7 @@ func NewStatusCollectorWithOptions(opts StatusCollectorOptions) *StatusCollector
 	if opts.StaleThreshold == 0 {
 		opts.StaleThreshold = 14 * 24 * time.Hour
 	}
-	
+
 	return &StatusCollector{
 		includeProcess: opts.IncludeProcess,
 		fetchRemote:    opts.FetchRemote,
@@ -262,7 +262,7 @@ func (c *StatusCollector) getLastActivity(path string) (time.Time, error) {
 	// This approach respects .gitignore patterns automatically and is much faster
 	// than walking the entire directory tree
 	g := git.New(path)
-	
+
 	// Get list of tracked files
 	// Using -z for null-terminated output to handle filenames with spaces
 	output, err := g.Run("ls-files", "-z")
@@ -273,18 +273,18 @@ func (c *StatusCollector) getLastActivity(path string) (time.Time, error) {
 
 	var latestTime time.Time
 	files := strings.Split(strings.TrimRight(output, "\x00"), "\x00")
-	
+
 	for _, file := range files {
 		if file == "" {
 			continue
 		}
-		
+
 		fullPath := filepath.Join(path, file)
 		info, err := os.Stat(fullPath)
 		if err != nil {
 			continue // Skip files we can't stat
 		}
-		
+
 		if info.ModTime().After(latestTime) {
 			latestTime = info.ModTime()
 		}
@@ -298,13 +298,13 @@ func (c *StatusCollector) getLastActivity(path string) (time.Time, error) {
 			if file == "" {
 				continue
 			}
-			
+
 			fullPath := filepath.Join(path, file)
 			info, err := os.Stat(fullPath)
 			if err != nil || info.IsDir() {
 				continue
 			}
-			
+
 			if info.ModTime().After(latestTime) {
 				latestTime = info.ModTime()
 			}
@@ -328,21 +328,21 @@ func (c *StatusCollector) getLastActivityFallback(path string) (time.Time, error
 
 	// Common large directories to skip
 	skipDirs := map[string]bool{
-		".git":         true,
-		"node_modules": true,
-		"vendor":       true,
-		".next":        true,
-		"dist":         true,
-		"build":        true,
-		"target":       true,
-		".cache":       true,
-		"coverage":     true,
-		"__pycache__":  true,
+		".git":          true,
+		"node_modules":  true,
+		"vendor":        true,
+		".next":         true,
+		"dist":          true,
+		"build":         true,
+		"target":        true,
+		".cache":        true,
+		"coverage":      true,
+		"__pycache__":   true,
 		".pytest_cache": true,
-		".venv":        true,
-		"venv":         true,
-		".idea":        true,
-		".vscode":      true,
+		".venv":         true,
+		"venv":          true,
+		".idea":         true,
+		".vscode":       true,
 	}
 
 	err := filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
@@ -399,13 +399,13 @@ func (c *StatusCollector) extractRepository(path string) string {
 
 	// Split the relative path into components
 	parts := strings.Split(rel, string(filepath.Separator))
-	
+
 	// Expected structure: host/owner/repository/branch
 	// Return the first 3 components if available
 	if len(parts) >= 3 {
 		return filepath.Join(parts[0], parts[1], parts[2])
 	}
-	
+
 	// If we don't have enough parts, return what we have or the basename
 	if len(parts) > 0 {
 		return rel

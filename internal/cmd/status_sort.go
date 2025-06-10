@@ -49,7 +49,7 @@ func getStatusPriority(status models.WorktreeState) int {
 		models.WorktreeStatusStale:    3,
 		models.WorktreeStatusClean:    4,
 	}
-	
+
 	if priority, ok := priorities[status]; ok {
 		return priority
 	}

@@ -4,8 +4,10 @@ package finder
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/d-kuro/gwq/internal/git"
+	"github.com/d-kuro/gwq/internal/tmux"
 	"github.com/d-kuro/gwq/pkg/models"
 	"github.com/d-kuro/gwq/pkg/utils"
 	"github.com/ktr0731/go-fuzzyfinder"
@@ -13,8 +15,8 @@ import (
 
 // Finder provides fuzzy finder functionality.
 type Finder struct {
-	git        *git.Git
-	config     *models.FinderConfig
+	git          *git.Git
+	config       *models.FinderConfig
 	useTildeHome bool
 }
 
@@ -167,6 +169,99 @@ func (f *Finder) SelectMultipleWorktrees(worktrees []models.Worktree) ([]models.
 	return selected, nil
 }
 
+// SelectSession displays a fuzzy finder for session selection.
+func (f *Finder) SelectSession(sessions []*tmux.Session) (*tmux.Session, error) {
+	if len(sessions) == 0 {
+		return nil, fmt.Errorf("no sessions available")
+	}
+
+	opts := f.buildSessionFinderOptions(sessions)
+
+	idx, err := fuzzyfinder.Find(sessions, f.formatSessionForDisplay(sessions), opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return sessions[idx], nil
+}
+
+// SelectMultipleSessions displays a fuzzy finder for multiple session selection.
+func (f *Finder) SelectMultipleSessions(sessions []*tmux.Session) ([]*tmux.Session, error) {
+	if len(sessions) == 0 {
+		return nil, fmt.Errorf("no sessions available")
+	}
+
+	opts := f.buildSessionFinderOptions(sessions)
+	opts[0] = fuzzyfinder.WithPromptString("Select sessions (Tab to select multiple)> ")
+
+	indices, err := fuzzyfinder.FindMulti(sessions, f.formatSessionForDisplay(sessions), opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	selected := make([]*tmux.Session, len(indices))
+	for i, idx := range indices {
+		selected[i] = sessions[idx]
+	}
+
+	return selected, nil
+}
+
+// generateSessionPreview generates preview content for a session.
+func (f *Finder) generateSessionPreview(session *tmux.Session, maxLines int) string {
+	preview := []string{
+		fmt.Sprintf("Session: %s", session.SessionName),
+		fmt.Sprintf("Context: %s", session.Context),
+		fmt.Sprintf("Identifier: %s", session.Identifier),
+		fmt.Sprintf("Command: %s", session.Command),
+		fmt.Sprintf("Duration: %s", formatDuration(time.Since(session.StartTime))),
+		fmt.Sprintf("Started: %s", session.StartTime.Format("2006-01-02 15:04:05")),
+	}
+
+	if session.WorkingDir != "" {
+		preview = append(preview, fmt.Sprintf("Directory: %s", session.WorkingDir))
+	}
+
+	if len(session.Metadata) > 0 {
+		preview = append(preview, "", "Metadata:")
+		for key, value := range session.Metadata {
+			preview = append(preview, fmt.Sprintf("  %s: %s", key, value))
+		}
+	}
+
+	// Limit to maxLines
+	if len(preview) > maxLines {
+		preview = preview[:maxLines]
+	}
+
+	return strings.Join(preview, "\n")
+}
+
+func formatDuration(d time.Duration) string {
+	switch {
+	case d < time.Minute:
+		return "just now"
+	case d < time.Hour:
+		mins := int(d.Minutes())
+		if mins == 1 {
+			return "1 min"
+		}
+		return fmt.Sprintf("%d mins", mins)
+	case d < 24*time.Hour:
+		hours := int(d.Hours())
+		if hours == 1 {
+			return "1 hour"
+		}
+		return fmt.Sprintf("%d hours", hours)
+	default:
+		days := int(d.Hours() / 24)
+		if days == 1 {
+			return "1 day"
+		}
+		return fmt.Sprintf("%d days", days)
+	}
+}
+
 // generateWorktreePreview generates preview content for a worktree.
 func (f *Finder) generateWorktreePreview(wt models.Worktree, maxLines int) string {
 	path := wt.Path
@@ -240,3 +335,28 @@ func truncateMessage(message string, maxLen int) string {
 	return message
 }
 
+// buildSessionFinderOptions builds common options for session fuzzy finder.
+func (f *Finder) buildSessionFinderOptions(sessions []*tmux.Session) []fuzzyfinder.Option {
+	opts := []fuzzyfinder.Option{
+		fuzzyfinder.WithPromptString("Select session> "),
+	}
+
+	if f.config.Preview {
+		opts = append(opts, fuzzyfinder.WithPreviewWindow(func(i, w, h int) string {
+			if i == -1 {
+				return ""
+			}
+			return f.generateSessionPreview(sessions[i], h)
+		}))
+	}
+
+	return opts
+}
+
+// formatSessionForDisplay formats a session for display in the fuzzy finder.
+func (f *Finder) formatSessionForDisplay(sessions []*tmux.Session) func(int) string {
+	return func(i int) string {
+		session := sessions[i]
+		return fmt.Sprintf("%s/%s - %s", session.Context, session.Identifier, session.Command)
+	}
+}

@@ -178,7 +178,7 @@ func (m *Manager) generateWorktreePath(branch string) (string, error) {
 
 	// Generate path using URL hierarchy
 	path := url.GenerateWorktreePath(m.config.Worktree.BaseDir, repoInfo, branch)
-	
+
 	return path, nil
 }
 
@@ -190,4 +190,3 @@ func (m *Manager) sanitizePath(path string) string {
 	}
 	return result
 }
-

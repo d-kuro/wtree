@@ -20,7 +20,7 @@ type RepositoryInfo struct {
 func ParseRepositoryURL(repoURL string) (*RepositoryInfo, error) {
 	// Handle different URL formats
 	repoURL = normalizeURL(repoURL)
-	
+
 	parsedURL, err := url.Parse(repoURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse repository URL: %w", err)
@@ -39,7 +39,7 @@ func ParseRepositoryURL(repoURL string) (*RepositoryInfo, error) {
 
 	owner := pathParts[0]
 	repository := pathParts[1]
-	
+
 	// Remove .git suffix if present
 	repository = strings.TrimSuffix(repository, ".git")
 

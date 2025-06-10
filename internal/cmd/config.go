@@ -40,8 +40,8 @@ Configuration keys follow a dot notation format (e.g., worktree.basedir).`,
 
   # Enable/disable colored output
   gwq config set ui.color true`,
-	Args: cobra.ExactArgs(2),
-	RunE: runConfigSet,
+	Args:              cobra.ExactArgs(2),
+	RunE:              runConfigSet,
 	ValidArgsFunction: getConfigKeyCompletions,
 }
 
@@ -55,8 +55,8 @@ var configGetCmd = &cobra.Command{
 
   # Get naming template
   gwq config get naming.template`,
-	Args: cobra.ExactArgs(1),
-	RunE: runConfigGet,
+	Args:              cobra.ExactArgs(1),
+	RunE:              runConfigGet,
 	ValidArgsFunction: getConfigKeyCompletions,
 }
 
