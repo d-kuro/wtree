@@ -79,6 +79,17 @@ func (m *mockGit) DeleteBranch(branch string, force bool) error {
 	return nil
 }
 
+func (m *mockGit) AddWorktreeFromBase(path, branch, baseBranch string) error {
+	if m.addError != nil {
+		return m.addError
+	}
+	m.worktrees = append(m.worktrees, models.Worktree{
+		Path:   path,
+		Branch: branch,
+	})
+	return nil
+}
+
 func TestManagerAdd(t *testing.T) {
 	tests := []struct {
 		name         string

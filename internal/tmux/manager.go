@@ -29,20 +29,22 @@ func NewSessionManager(config *SessionConfig, dataDir string) *SessionManager {
 func (s *SessionManager) CreateSession(ctx context.Context, opts SessionOptions) (*Session, error) {
 	sessionName := fmt.Sprintf("gwq-%s-%s-%s", opts.Context, opts.Identifier, time.Now().Format("20060102150405"))
 
-	if err := s.tmuxCmd.NewSessionContext(ctx, sessionName, opts.WorkingDir); err != nil {
-		return nil, fmt.Errorf("failed to create tmux session: %w", err)
+	// Create session with or without command
+	if opts.Command != "" {
+		// Create session with command - when command finishes, session will automatically terminate
+		if err := s.tmuxCmd.NewSessionWithCommandContext(ctx, sessionName, opts.WorkingDir, opts.Command); err != nil {
+			return nil, fmt.Errorf("failed to create tmux session with command: %w", err)
+		}
+	} else {
+		// Create session without command (traditional behavior)
+		if err := s.tmuxCmd.NewSessionContext(ctx, sessionName, opts.WorkingDir); err != nil {
+			return nil, fmt.Errorf("failed to create tmux session: %w", err)
+		}
 	}
 
 	if err := s.tmuxCmd.SetOptionContext(ctx, sessionName, "history-limit", s.config.HistoryLimit); err != nil {
 		_ = s.tmuxCmd.KillSession(sessionName)
 		return nil, fmt.Errorf("failed to set history limit: %w", err)
-	}
-
-	if opts.Command != "" {
-		if err := s.tmuxCmd.SendKeysContext(ctx, sessionName, opts.Command); err != nil {
-			_ = s.tmuxCmd.KillSession(sessionName)
-			return nil, fmt.Errorf("failed to execute command: %w", err)
-		}
 	}
 
 	session := &Session{
@@ -185,4 +187,9 @@ func generateShortID() string {
 	b := make([]byte, 3)
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
+}
+
+// HasSession checks if a session exists
+func (s *SessionManager) HasSession(sessionName string) bool {
+	return s.tmuxCmd.HasSession(sessionName)
 }

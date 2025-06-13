@@ -130,6 +130,16 @@ Manage configuration settings
 - Set configuration values (`gwq config set <key> <value>`)
 - Hierarchical key support (e.g., `worktree.basedir`)
 
+#### `gwq claude`
+
+Manage Claude Code integration for automated development
+
+- Interactive execution with `gwq claude run`
+- Structured task queue management with `gwq claude task`
+- Comprehensive logging and monitoring with `gwq claude logs`
+- Task-specific log management with `gwq claude task logs`
+- Worker management for automated task execution
+
 #### `gwq version`
 
 Display version information

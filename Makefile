@@ -82,10 +82,10 @@ lint:
 ## fmt: Format code
 fmt:
 	@echo "Formatting code..."
-	@if command -v goimports >/dev/null 2>&1; then \
-		goimports -w $(GO_FILES); \
+	@if command -v golangci-lint >/dev/null 2>&1; then \
+		golangci-lint fmt ./...; \
 	else \
-		echo "goimports not installed. Install with: go install golang.org/x/tools/cmd/goimports@latest"; \
+		echo "golangci-lint not installed. Install with: brew install golangci-lint"; \
 	fi
 
 ## vet: Run go vet
