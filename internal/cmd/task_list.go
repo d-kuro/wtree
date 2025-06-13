@@ -118,7 +118,7 @@ func outputTaskList(tasks []*claude.Task, presenter *presenters.TaskPresenter) e
 
 func outputTaskListCSV(tasks []*claude.Task) error {
 	// Create table with CSV-friendly data
-	t := table.New().Headers("TASK_ID", "WORKTREE", "STATUS", "PRIORITY", "DEPENDENCIES", "DURATION")
+	t := table.New().Headers("task_id", "worktree", "status", "priority", "dependencies", "duration")
 
 	// Add rows to table
 	for _, task := range tasks {

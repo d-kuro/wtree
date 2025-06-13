@@ -152,7 +152,7 @@ func outputSessionsJSON(sessions []*tmux.Session) error {
 }
 
 func outputSessionsCSV(sessions []*tmux.Session) error {
-	t := table.New().Headers("Context", "Identifier", "Duration", "Command", "WorkingDir", "SessionName")
+	t := table.New().Headers("context", "identifier", "duration", "command", "working_dir", "session_name")
 
 	// Write data
 	for _, session := range sessions {
