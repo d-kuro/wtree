@@ -35,6 +35,7 @@ type Config struct {
 	Naming   NamingConfig   `mapstructure:"naming"`   // Naming convention configuration
 	UI       UIConfig       `mapstructure:"ui"`       // UI-related configuration
 	Tmux     TmuxConfig     `mapstructure:"tmux"`     // Tmux session configuration
+	Claude   ClaudeConfig   `mapstructure:"claude"`   // Claude Code task queue configuration
 }
 
 // WorktreeConfig contains worktree-specific configuration options.
@@ -119,4 +120,69 @@ type ProcessInfo struct {
 	PID     int    `json:"pid"`     // Process ID
 	Command string `json:"command"` // Command name
 	Type    string `json:"type"`    // Process type (e.g., "ai_agent")
+}
+
+// ClaudeConfig contains Claude Code task queue configuration.
+type ClaudeConfig struct {
+	// Claude Code executable and core options
+	Executable      string   `mapstructure:"executable"`       // Claude Code executable path
+	SkipPermissions bool     `mapstructure:"skip_permissions"` // Always true for automation
+	ConfigDir       string   `mapstructure:"config_dir"`       // Configuration and state directory
+	AdditionalArgs  []string `mapstructure:"additional_args"`  // Additional Claude Code arguments
+
+	// Global parallelism control
+	MaxParallel         int `mapstructure:"max_parallel"`          // Max parallel Claude instances
+	MaxDevelopmentTasks int `mapstructure:"max_development_tasks"` // Max concurrent development tasks
+
+	// Resource limits
+	MaxCPUPercent int `mapstructure:"max_cpu_percent"` // CPU usage limit
+	MaxMemoryMB   int `mapstructure:"max_memory_mb"`   // Memory usage limit
+
+	// Queue configuration
+	Queue ClaudeQueueConfig `mapstructure:"queue"` // Queue management configuration
+
+	// Worktree integration
+	Worktree ClaudeWorktreeConfig `mapstructure:"worktree"` // Worktree integration options
+
+	// Headless execution configuration
+	Headless ClaudeHeadlessConfig `mapstructure:"headless"` // Headless execution configuration
+}
+
+// ClaudeQueueConfig contains task queue management configuration.
+type ClaudeQueueConfig struct {
+	MaxQueueSize         int      `mapstructure:"max_queue_size"`        // Maximum queue size
+	QueueDir             string   `mapstructure:"queue_dir"`             // Queue storage directory
+	PriorityBoostAfter   string   `mapstructure:"priority_boost_after"`  // Boost priority after duration
+	StarvationPrevention bool     `mapstructure:"starvation_prevention"` // Prevent low priority starvation
+	DependencyTimeout    string   `mapstructure:"dependency_timeout"`    // Max time to wait for dependencies
+	MaxDependencyDepth   int      `mapstructure:"max_dependency_depth"`  // Max dependency chain depth
+	ValidateDependencies bool     `mapstructure:"validate_dependencies"` // Validate dependency graph
+	ValidateTaskFiles    bool     `mapstructure:"validate_task_files"`   // Validate task file format
+	RequiredFields       []string `mapstructure:"required_fields"`       // Required task fields
+}
+
+// ClaudeWorktreeConfig contains worktree integration configuration.
+type ClaudeWorktreeConfig struct {
+	AutoCreateWorktree      bool `mapstructure:"auto_create_worktree"`      // Auto create via gwq add
+	RequireExistingWorktree bool `mapstructure:"require_existing_worktree"` // Only use existing worktrees
+	ValidateBranchExists    bool `mapstructure:"validate_branch_exists"`    // Check branch exists
+}
+
+// ClaudeHeadlessConfig contains headless execution configuration.
+type ClaudeHeadlessConfig struct {
+	LogRetentionDays int    `mapstructure:"log_retention_days"` // Log retention in days
+	MaxLogSizeMB     int    `mapstructure:"max_log_size_mb"`    // Maximum log size in MB
+	AutoCleanup      bool   `mapstructure:"auto_cleanup"`       // Auto cleanup old logs
+	FuzzyFinder      string `mapstructure:"fuzzy_finder"`       // Fuzzy finder executable
+
+	// Log formatting configuration
+	Formatting ClaudeHeadlessFormattingConfig `mapstructure:"formatting"` // Log formatting options
+}
+
+// ClaudeHeadlessFormattingConfig contains log formatting configuration.
+type ClaudeHeadlessFormattingConfig struct {
+	ShowToolDetails   bool `mapstructure:"show_tool_details"`   // Show detailed tool information
+	ShowCostBreakdown bool `mapstructure:"show_cost_breakdown"` // Show cost breakdown
+	ShowTimingInfo    bool `mapstructure:"show_timing_info"`    // Show timing information
+	MaxContentLength  int  `mapstructure:"max_content_length"`  // Maximum content length for display
 }

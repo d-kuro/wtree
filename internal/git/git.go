@@ -117,6 +117,21 @@ func (g *Git) AddWorktree(path, branch string, createBranch bool) error {
 	return nil
 }
 
+// AddWorktreeFromBase creates a new worktree with a branch from a specific base branch.
+func (g *Git) AddWorktreeFromBase(path, branch, baseBranch string) error {
+	args := []string{"worktree", "add", "-b", branch, path}
+
+	if baseBranch != "" {
+		args = append(args, baseBranch)
+	}
+
+	if _, err := g.run(args...); err != nil {
+		return fmt.Errorf("failed to add worktree from base branch %s: %w", baseBranch, err)
+	}
+
+	return nil
+}
+
 // RemoveWorktree removes a worktree.
 func (g *Git) RemoveWorktree(path string, force bool) error {
 	args := []string{"worktree", "remove"}

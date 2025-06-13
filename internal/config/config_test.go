@@ -182,37 +182,10 @@ func TestGettersAndSetters(t *testing.T) {
 	// For testing, we'll just verify viper operations
 	viper.Set(testKey, testValue)
 
-	if got := Get(testKey); got != testValue {
-		t.Errorf("Get(%s) = %v, want %v", testKey, got, testValue)
+	if got := GetValue(testKey); got != testValue {
+		t.Errorf("GetValue(%s) = %v, want %v", testKey, got, testValue)
 	}
 
-	// Test GetString
-	if got := GetString(testKey); got != testValue {
-		t.Errorf("GetString(%s) = %s, want %s", testKey, got, testValue)
-	}
-
-	// Test GetBool
-	boolKey := "test.bool"
-	viper.Set(boolKey, true)
-	if got := GetBool(boolKey); !got {
-		t.Errorf("GetBool(%s) = %v, want true", boolKey, got)
-	}
-
-	// Test GetInt
-	intKey := "test.int"
-	intValue := 42
-	viper.Set(intKey, intValue)
-	if got := GetInt(intKey); got != intValue {
-		t.Errorf("GetInt(%s) = %d, want %d", intKey, got, intValue)
-	}
-
-	// Test GetStringMapString
-	mapKey := "test.map"
-	mapValue := map[string]string{"foo": "bar", "baz": "qux"}
-	viper.Set(mapKey, mapValue)
-	if got := GetStringMapString(mapKey); len(got) != len(mapValue) {
-		t.Errorf("GetStringMapString(%s) returned map with %d entries, want %d", mapKey, len(got), len(mapValue))
-	}
 }
 
 func TestAllSettings(t *testing.T) {

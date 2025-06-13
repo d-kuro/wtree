@@ -15,6 +15,7 @@ import (
 type GitInterface interface {
 	ListWorktrees() ([]models.Worktree, error)
 	AddWorktree(path, branch string, createBranch bool) error
+	AddWorktreeFromBase(path, branch, baseBranch string) error
 	RemoveWorktree(path string, force bool) error
 	DeleteBranch(branch string, force bool) error
 	PruneWorktrees() error
@@ -64,6 +65,39 @@ func (m *Manager) Add(branch string, customPath string, createBranch bool) error
 	}
 
 	if err := m.git.AddWorktree(path, branch, createBranch); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// AddFromBase creates a new worktree with a branch from a specific base branch.
+func (m *Manager) AddFromBase(branch string, baseBranch string, customPath string) error {
+	path := customPath
+	if path == "" {
+		generatedPath, err := m.generateWorktreePath(branch)
+		if err != nil {
+			return fmt.Errorf("failed to generate worktree path: %w", err)
+		}
+		path = generatedPath
+	}
+
+	if !filepath.IsAbs(path) {
+		absPath, err := filepath.Abs(path)
+		if err != nil {
+			return fmt.Errorf("failed to get absolute path: %w", err)
+		}
+		path = absPath
+	}
+
+	if m.config.Worktree.AutoMkdir {
+		dir := filepath.Dir(path)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("failed to create directory: %w", err)
+		}
+	}
+
+	if err := m.git.AddWorktreeFromBase(path, branch, baseBranch); err != nil {
 		return err
 	}
 

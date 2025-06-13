@@ -109,7 +109,7 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 
 func runConfigGet(cmd *cobra.Command, args []string) error {
 	key := args[0]
-	value := config.Get(key)
+	value := config.GetValue(key)
 
 	if value == nil {
 		return fmt.Errorf("configuration key not found: %s", key)

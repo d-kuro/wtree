@@ -36,13 +36,14 @@ func (t *TmuxCommand) NewSessionContext(ctx context.Context, name, workDir strin
 	return t.RunCommandContext(ctx, args...)
 }
 
-func (t *TmuxCommand) SendKeys(sessionName, command string) error {
-	args := []string{"send-keys", "-t", sessionName, command, "Enter"}
-	return t.runCommand(args...)
-}
-
-func (t *TmuxCommand) SendKeysContext(ctx context.Context, sessionName, command string) error {
-	args := []string{"send-keys", "-t", sessionName, command, "Enter"}
+func (t *TmuxCommand) NewSessionWithCommandContext(ctx context.Context, name, workDir, command string) error {
+	args := []string{"new-session", "-d", "-s", name}
+	if workDir != "" {
+		args = append(args, "-c", workDir)
+	}
+	if command != "" {
+		args = append(args, command)
+	}
 	return t.RunCommandContext(ctx, args...)
 }
 
@@ -140,25 +141,6 @@ func (t *TmuxCommand) HasSession(sessionName string) bool {
 	args := []string{"has-session", "-t", sessionName}
 	err := t.runCommand(args...)
 	return err == nil
-}
-
-func (t *TmuxCommand) CapturePane(sessionName string, lines int) ([]string, error) {
-	args := []string{"capture-pane", "-t", sessionName, "-p", "-S", fmt.Sprintf("-%d", lines)}
-	output, err := t.runCommandOutput(args...)
-	if err != nil {
-		return nil, err
-	}
-	return strings.Split(output, "\n"), nil
-}
-
-func (t *TmuxCommand) SaveBuffer(sessionName, filename string) error {
-	captureArgs := []string{"capture-pane", "-t", sessionName}
-	if err := t.runCommand(captureArgs...); err != nil {
-		return err
-	}
-
-	saveArgs := []string{"save-buffer", filename}
-	return t.runCommand(saveArgs...)
 }
 
 func (t *TmuxCommand) runCommand(args ...string) error {
