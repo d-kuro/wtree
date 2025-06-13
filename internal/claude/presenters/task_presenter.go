@@ -7,9 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/lipgloss/table"
 	"github.com/d-kuro/gwq/internal/claude"
+	"github.com/d-kuro/gwq/internal/table"
 )
 
 // TaskPresenter handles task display formatting
@@ -27,10 +26,8 @@ func (p *TaskPresenter) OutputTasksTable(tasks []*claude.Task, verbose bool) err
 		return nil
 	}
 
-	// Create table with lipgloss
-	t := table.New().
-		Border(lipgloss.NormalBorder()).
-		Headers("TASK", "WORKTREE", "STATUS", "PRIORITY", "DEPS", "DURATION")
+	// Create table with our new table package
+	t := table.New().Headers("TASK", "WORKTREE", "STATUS", "PRIORITY", "DEPS", "DURATION")
 
 	// Add rows to table
 	for _, task := range tasks {
@@ -67,8 +64,7 @@ func (p *TaskPresenter) OutputTasksTable(tasks []*claude.Task, verbose bool) err
 		}
 	}
 
-	fmt.Println(t)
-	return nil
+	return t.Println()
 }
 
 // OutputTaskDetails outputs detailed information about a task

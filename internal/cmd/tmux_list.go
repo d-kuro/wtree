@@ -1,15 +1,14 @@
 package cmd
 
 import (
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
-	"text/tabwriter"
 	"time"
 
 	"github.com/d-kuro/gwq/internal/config"
+	"github.com/d-kuro/gwq/internal/table"
 	"github.com/d-kuro/gwq/internal/tmux"
 	"github.com/d-kuro/gwq/internal/ui"
 	"github.com/d-kuro/gwq/pkg/models"
@@ -153,32 +152,22 @@ func outputSessionsJSON(sessions []*tmux.Session) error {
 }
 
 func outputSessionsCSV(sessions []*tmux.Session) error {
-	writer := csv.NewWriter(os.Stdout)
-	defer writer.Flush()
-
-	// Write header
-	header := []string{"Context", "Identifier", "Duration", "Command", "WorkingDir", "SessionName"}
-	if err := writer.Write(header); err != nil {
-		return err
-	}
+	t := table.New().Headers("Context", "Identifier", "Duration", "Command", "WorkingDir", "SessionName")
 
 	// Write data
 	for _, session := range sessions {
 		duration := time.Since(session.StartTime).Round(time.Second).String()
-		record := []string{
+		t.Row(
 			session.Context,
 			session.Identifier,
 			duration,
 			session.Command,
 			session.WorkingDir,
 			session.SessionName,
-		}
-		if err := writer.Write(record); err != nil {
-			return err
-		}
+		)
 	}
 
-	return nil
+	return t.WriteCSV()
 }
 
 func outputSessionsTable(sessions []*tmux.Session, printer *ui.Printer) error {
@@ -187,21 +176,17 @@ func outputSessionsTable(sessions []*tmux.Session, printer *ui.Printer) error {
 		return nil
 	}
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	defer func() { _ = w.Flush() }()
-
-	_, _ = fmt.Fprintln(w, "SESSION\tDURATION\tWORKING_DIR")
+	t := table.New().Headers("SESSION", "DURATION", "WORKING_DIR")
 
 	for _, session := range sessions {
 		sessionIdentifier := session.Context + "/" + session.Identifier
 		duration := formatSessionDuration(session.StartTime)
 		workdir := formatWorkingDir(session.WorkingDir, printer)
 
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n",
-			sessionIdentifier, duration, workdir)
+		t.Row(sessionIdentifier, duration, workdir)
 	}
 
-	return nil
+	return t.Println()
 }
 
 func formatSessionDuration(startTime time.Time) string {
