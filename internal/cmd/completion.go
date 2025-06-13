@@ -127,23 +127,34 @@ func getConfigKeyCompletions(_ *cobra.Command, args []string, toComplete string)
 	return completions, cobra.ShellCompDirectiveNoFileComp
 }
 
-// getRemoveCompletions returns both worktree and branch names for removal
+// getRemoveCompletions returns only removable (non-main) worktree names for removal
 func getRemoveCompletions(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	worktreeCompletions, _ := getWorktreeCompletions(cmd, args, toComplete)
-	branchCompletions, _ := getBranchCompletions(cmd, args, toComplete)
+	if len(args) > 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
 
-	// Combine both completions
-	completions := append(worktreeCompletions, branchCompletions...)
+	g, err := git.NewFromCwd()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
 
-	// Remove duplicates
-	seen := make(map[string]bool)
-	var uniqueCompletions []string
-	for _, comp := range completions {
-		if !seen[comp] {
-			seen[comp] = true
-			uniqueCompletions = append(uniqueCompletions, comp)
+	wm := worktree.New(g, nil)
+	worktrees, err := wm.List()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	// Filter out main worktrees - same logic as fuzzy finder
+	var completions []string
+	for _, wt := range worktrees {
+		if !wt.IsMain && (strings.HasPrefix(wt.Branch, toComplete) || strings.HasPrefix(wt.Path, toComplete)) {
+			desc := fmt.Sprintf("Branch: %s", wt.Branch)
+			if wt.Path != "" {
+				desc += fmt.Sprintf(" | Path: %s", wt.Path)
+			}
+			completions = append(completions, fmt.Sprintf("%s\t%s", wt.Branch, desc))
 		}
 	}
 
-	return uniqueCompletions, cobra.ShellCompDirectiveNoFileComp
+	return completions, cobra.ShellCompDirectiveNoFileComp
 }
