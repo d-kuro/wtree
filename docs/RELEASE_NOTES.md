@@ -1,50 +1,184 @@
 # gwq Release Notes
 
-## v0.0.4 (Unreleased)
+## v0.0.4-rc.1 (2025-06-13)
 
-### ✨ New Features
-- **Tmux Session Management** (#11): Run and manage long-running processes in persistent tmux sessions
-  - **Session Lifecycle Management**: Create, list, attach, and kill tmux sessions for any command
-  - **Persistence Across Disconnections**: Sessions continue running even if terminal or SSH connection drops
-  - **Interactive Session Selection**: Fuzzy finder integration for easy session management
-  - **Multiple Output Formats**: Table, JSON, and CSV formats for integration and automation
-  - **Watch Mode**: Real-time monitoring of session status with `--watch` flag
-  - **Batch Operations**: Kill multiple sessions with interactive selection
-  - **Auto-cleanup Option**: Sessions can automatically terminate when commands complete
-  - **Context Cancellation**: Proper handling of long-running operations with Go context
+> ⚠️ **RELEASE CANDIDATE WARNING**  
+> This is a release candidate and may contain breaking changes. Features and APIs are subject to change without notice. Not recommended for production use.
 
-### 🎯 Tmux Command Examples
-```bash
-# Run development server in tmux session
-gwq tmux run "npm run dev"
+### 🚀 New Features
 
-# Run with custom identifier
-gwq tmux run --id api-server "python app.py"
+#### Tmux Session Management (#11)
+- **New `gwq tmux` command group** for comprehensive session management
+  - `gwq tmux list` - List active tmux sessions with JSON/CSV output support
+  - `gwq tmux run` - Create new tmux sessions for long-running processes
+  - `gwq tmux attach` - Attach to running sessions with fuzzy finder
+  - `gwq tmux kill` - Terminate sessions with batch operations
+- **Persistent session support** for development servers, builds, and tests
+- **Real-time monitoring** and interactive session selection
 
-# Run in specific worktree
-gwq tmux run -w feature/auth "make test"
+#### Claude Task Queue System (#12)
+- **Complete task management CLI** with YAML-based configuration
+  - `gwq task add` - Add tasks individually or from YAML files
+  - `gwq task list` - List all tasks with status and priority filtering
+  - `gwq task worker start` - Start task execution worker with parallel control
+  - `gwq task worker stop` - Stop running workers
+  - `gwq task logs` - View task-specific execution logs
+  - `gwq task status` - Check task execution status and dependencies
+- **Advanced dependency management** with graph-based resolution and cycle detection
+- **Priority-based scheduling** (0-100 scale) with parallel execution control
+- **Automatic Git worktree management** for isolated task execution
+- **Comprehensive logging** with JSON-structured, task-specific logs
+- **tmux integration** for persistent task sessions
 
-# List all sessions with real-time updates
-gwq tmux list --watch
+### 🔧 Technical Improvements
 
-# Attach to running session
-gwq tmux attach api-server
+- Added `internal/tmux` package for session lifecycle management
+- Implemented extensible, agent-based architecture for task execution
+- Enhanced context cancellation support
+- Simplified configuration structure
+- Removed unused code and dependencies
 
-# Kill all sessions with confirmation
-gwq tmux kill --all
+### 📋 Sample Task File (tasks.yaml)
+
+```yaml
+version: "1.0"
+repository: /path/to/your/project  # REQUIRED: Absolute path only
+
+# Default configuration for all tasks
+default_config:
+  skip_permissions: true
+  timeout: "2h"
+  max_iterations: 3
+  dependency_policy: "wait"
+  priority: 50
+
+tasks:
+  - id: lint-check
+    worktree: release/lint-check
+    base_branch: main
+    priority: 90
+    prompt: "Run make lint and fix any issues found"
+
+  - id: test-suite
+    worktree: release/test-suite
+    base_branch: main
+    priority: 85
+    prompt: "Execute make test and ensure all tests pass"
+    depends_on: ["lint-check"]
+
+  - id: build-check
+    worktree: release/build-check
+    base_branch: main
+    priority: 80
+    prompt: "Run make build and verify successful compilation"
+    depends_on: ["test-suite"]
+
+  - id: docs-update
+    worktree: release/docs-update
+    base_branch: main
+    priority: 60
+    prompt: "Update documentation and README if needed"
+
+  - id: docs-update
+    worktree: release/docs-update
+    base_branch: main
+    priority: 95
+    prompt: "Prepare release v0.0.4-rc.1 and update version files"
+    depends_on: ["build-check", "docs-update"]
 ```
 
-### 🔧 Code Improvements
-- Added context cancellation support for tmux operations
-- Removed unused code and configuration fields for cleaner implementation
-- Enhanced fuzzy finder with session selection capabilities
-- Simplified tmux list display by removing bullet markers and making working directory visible by default
+#### Task Management Examples
 
-### 📖 Documentation
-- Updated README with comprehensive tmux subcommand documentation
-- Added tmux session management to feature list
-- Included tmux configuration options
-- Enhanced AI workflow examples with tmux integration
+Adding tasks:
+
+```console
+$ gwq task add claude -f tasks.yaml
+Task 'Run make lint and fix any issues found' (f1a2b3c4) added successfully
+Repository: /path/to/your/project
+Worktree: release/lint-check, Priority: 90
+
+Task 'Execute make test and ensure all tests pass' (d5e6f7g8) added successfully
+Repository: /path/to/your/project
+Worktree: release/test-suite, Priority: 85
+Dependencies: f1a2b3c4
+
+Successfully added 5 tasks from tasks.yaml
+```
+
+Starting worker:
+
+```console
+$ gwq task worker start --parallel 2
+Starting Claude Code worker (max parallel: 2)
+Worker started, polling for tasks...
+Starting task: Run make lint and fix any issues found (ID: f1a2b3c4)
+Starting task: Update documentation and README if needed (ID: l3m4n5o6)
+Creating worktree 'release/lint-check' from base branch 'main'...
+Creating worktree 'release/docs-update' from base branch 'main'...
+Task completed: l3m4n5o6
+Task completed: f1a2b3c4
+Starting task: Execute make test and ensure all tests pass (ID: d5e6f7g8)
+```
+
+### 📖 Usage Examples
+
+#### Task Queue Management
+```bash
+# Add single task
+gwq task add claude "Fix linting issues in main package"
+
+# Add tasks from YAML file
+gwq task add claude -f tasks.yaml
+
+# List all tasks
+gwq task list
+
+# List tasks with filtering
+gwq task list --status pending --priority high
+
+# Start worker with parallel execution
+gwq task worker start --parallel 2
+
+# Stop worker
+gwq task worker stop
+
+# View task logs
+gwq task logs <task-id>
+
+# Check task status
+gwq task status <task-id>
+```
+
+#### Tmux Session Management
+```bash
+# List active sessions
+gwq tmux list --format json
+
+# Create and run session
+gwq tmux run --session dev-server "npm run dev"
+
+# Attach to session
+gwq tmux attach
+
+# Kill specific session
+gwq tmux kill --session dev-server
+```
+
+### ⚠️ Breaking Changes
+
+- New command structure may conflict with existing workflows
+- Configuration format changes for task management
+- API changes in internal packages
+
+### 🐛 Known Issues
+
+- Task dependency resolution may have edge cases
+- tmux integration requires tmux to be installed
+- Some error handling may need refinement
+
+---
+
+## v0.0.4 (Unreleased)
 
 ## v0.0.3 (2025-06-09)
 
