@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"text/tabwriter"
 	"time"
 
+	"github.com/d-kuro/gwq/internal/table"
 	"github.com/d-kuro/gwq/pkg/models"
 	"github.com/d-kuro/gwq/pkg/utils"
 )
@@ -43,11 +43,9 @@ func (p *Printer) PrintWorktrees(worktrees []models.Worktree, verbose bool) {
 		return
 	}
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	defer func() { _ = w.Flush() }()
-
+	var t *table.Builder
 	if verbose {
-		_, _ = fmt.Fprintln(w, "BRANCH\tPATH\tCOMMIT\tCREATED\tTYPE")
+		t = table.New().Headers("BRANCH", "PATH", "COMMIT", "CREATED", "TYPE")
 		for _, wt := range worktrees {
 			wtType := "additional"
 			if wt.IsMain {
@@ -57,7 +55,7 @@ func (p *Printer) PrintWorktrees(worktrees []models.Worktree, verbose bool) {
 			if p.useTildeHome {
 				path = utils.TildePath(path)
 			}
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+			t.Row(
 				wt.Branch,
 				path,
 				p.truncateHash(wt.CommitHash),
@@ -66,7 +64,7 @@ func (p *Printer) PrintWorktrees(worktrees []models.Worktree, verbose bool) {
 			)
 		}
 	} else {
-		_, _ = fmt.Fprintln(w, "BRANCH\tPATH")
+		t = table.New().Headers("BRANCH", "PATH")
 		for _, wt := range worktrees {
 			// Apply marker with consistent spacing
 			var branchWithMarker string
@@ -80,8 +78,12 @@ func (p *Printer) PrintWorktrees(worktrees []models.Worktree, verbose bool) {
 			if p.useTildeHome {
 				path = utils.TildePath(path)
 			}
-			_, _ = fmt.Fprintf(w, "%s\t%s\n", branchWithMarker, path)
+			t.Row(branchWithMarker, path)
 		}
+	}
+
+	if err := t.Println(); err != nil {
+		fmt.Printf("Error printing table: %v\n", err)
 	}
 }
 
@@ -99,10 +101,7 @@ func (p *Printer) PrintBranches(branches []models.Branch) {
 		return
 	}
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	defer func() { _ = w.Flush() }()
-
-	_, _ = fmt.Fprintln(w, "BRANCH\tLAST COMMIT\tAUTHOR\tDATE")
+	t := table.New().Headers("BRANCH", "LAST COMMIT", "AUTHOR", "DATE")
 	for _, branch := range branches {
 		marker := ""
 		if p.useIcons {
@@ -115,13 +114,16 @@ func (p *Printer) PrintBranches(branches []models.Branch) {
 			}
 		}
 
-		_, _ = fmt.Fprintf(w, "%s%s\t%s\t%s\t%s\n",
-			marker,
-			branch.Name,
+		t.Row(
+			marker+branch.Name,
 			p.truncateMessage(branch.LastCommit.Message, 50),
 			branch.LastCommit.Author,
 			p.formatTime(branch.LastCommit.Date),
 		)
+	}
+
+	if err := t.Println(); err != nil {
+		fmt.Printf("Error printing table: %v\n", err)
 	}
 }
 

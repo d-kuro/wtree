@@ -2,11 +2,14 @@ package cmd
 
 import (
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/d-kuro/gwq/internal/claude"
 	"github.com/d-kuro/gwq/internal/claude/presenters"
 	"github.com/d-kuro/gwq/internal/claude/services"
 	"github.com/d-kuro/gwq/internal/config"
+	"github.com/d-kuro/gwq/internal/table"
 	"github.com/spf13/cobra"
 )
 
@@ -114,8 +117,49 @@ func outputTaskList(tasks []*claude.Task, presenter *presenters.TaskPresenter) e
 }
 
 func outputTaskListCSV(tasks []*claude.Task) error {
-	// TODO: Implement CSV output using presenter
-	return fmt.Errorf("CSV output not yet implemented")
+	// Create table with CSV-friendly data
+	t := table.New().Headers("task_id", "worktree", "status", "priority", "dependencies", "duration")
+
+	// Add rows to table
+	for _, task := range tasks {
+		status := string(task.Status)
+
+		worktree := task.Worktree
+
+		deps := strconv.Itoa(len(task.DependsOn))
+		if len(task.DependsOn) == 0 {
+			deps = "0"
+		}
+
+		duration := ""
+		if task.Result != nil {
+			duration = formatDurationForCSV(task.Result.Duration)
+		} else if task.StartedAt != nil {
+			duration = formatDurationForCSV(time.Since(*task.StartedAt))
+		}
+
+		t.Row(
+			task.ID,
+			worktree,
+			status,
+			strconv.Itoa(int(task.Priority)),
+			deps,
+			duration,
+		)
+	}
+
+	return t.WriteCSV()
+}
+
+// formatDurationForCSV formats a duration for CSV output (no special characters)
+func formatDurationForCSV(d time.Duration) string {
+	if d < time.Minute {
+		return fmt.Sprintf("%ds", int(d.Seconds()))
+	}
+	if d < time.Hour {
+		return fmt.Sprintf("%dm", int(d.Minutes()))
+	}
+	return fmt.Sprintf("%dh%dm", int(d.Hours()), int(d.Minutes())%60)
 }
 
 func watchTaskList() error {

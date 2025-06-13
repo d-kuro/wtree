@@ -1,15 +1,14 @@
 package cmd
 
 import (
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
-	"text/tabwriter"
 	"time"
 
+	"github.com/d-kuro/gwq/internal/table"
 	"github.com/d-kuro/gwq/internal/ui"
 	"github.com/d-kuro/gwq/pkg/models"
 )
@@ -33,16 +32,10 @@ func outputJSON(statuses []*models.WorktreeStatus) error {
 
 // outputCSV outputs worktree statuses in CSV format.
 func outputCSV(statuses []*models.WorktreeStatus) error {
-	writer := csv.NewWriter(os.Stdout)
-	defer writer.Flush()
-
-	headers := []string{
+	t := table.New().Headers(
 		"branch", "status", "modified", "added", "deleted",
 		"ahead", "behind", "last_activity", "process",
-	}
-	if err := writer.Write(headers); err != nil {
-		return err
-	}
+	)
 
 	for _, s := range statuses {
 		process := ""
@@ -54,7 +47,7 @@ func outputCSV(statuses []*models.WorktreeStatus) error {
 			process = strings.Join(processes, ",")
 		}
 
-		record := []string{
+		t.Row(
 			s.Branch,
 			string(s.Status),
 			strconv.Itoa(s.GitStatus.Modified),
@@ -64,13 +57,10 @@ func outputCSV(statuses []*models.WorktreeStatus) error {
 			strconv.Itoa(s.GitStatus.Behind),
 			s.LastActivity.Format(time.RFC3339),
 			process,
-		}
-		if err := writer.Write(record); err != nil {
-			return err
-		}
+		)
 	}
 
-	return nil
+	return t.WriteCSV()
 }
 
 // outputTable outputs worktree statuses in table format.
@@ -80,13 +70,11 @@ func outputTable(statuses []*models.WorktreeStatus, printer *ui.Printer, verbose
 		return nil
 	}
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	defer func() { _ = w.Flush() }()
-
+	var t *table.Builder
 	if verbose {
-		_, _ = fmt.Fprintln(w, "BRANCH\tSTATUS\tCHANGES\tAHEAD/BEHIND\tACTIVITY\tPROCESS")
+		t = table.New().Headers("BRANCH", "STATUS", "CHANGES", "AHEAD/BEHIND", "ACTIVITY", "PROCESS")
 	} else {
-		_, _ = fmt.Fprintln(w, "BRANCH\tSTATUS\tCHANGES\tACTIVITY")
+		t = table.New().Headers("BRANCH", "STATUS", "CHANGES", "ACTIVITY")
 	}
 
 	for _, s := range statuses {
@@ -105,15 +93,13 @@ func outputTable(statuses []*models.WorktreeStatus, printer *ui.Printer, verbose
 		if verbose {
 			aheadBehind := formatAheadBehind(s.GitStatus.Ahead, s.GitStatus.Behind)
 			process := formatProcess(s.ActiveProcess)
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
-				branchWithMarker, status, changes, aheadBehind, activity, process)
+			t.Row(branchWithMarker, status, changes, aheadBehind, activity, process)
 		} else {
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
-				branchWithMarker, status, changes, activity)
+			t.Row(branchWithMarker, status, changes, activity)
 		}
 	}
 
-	return nil
+	return t.Println()
 }
 
 func formatStatusNoColor(status models.WorktreeState) string {
