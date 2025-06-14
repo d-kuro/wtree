@@ -51,12 +51,21 @@ func (p *Printer) PrintWorktrees(worktrees []models.Worktree, verbose bool) {
 			if wt.IsMain {
 				wtType = models.WorktreeTypeMain
 			}
+
+			// Apply marker with consistent spacing
+			var branchWithMarker string
+			if wt.IsMain && p.useIcons {
+				branchWithMarker = "● " + wt.Branch
+			} else {
+				branchWithMarker = "  " + wt.Branch // Two spaces to match "● " width
+			}
+
 			path := wt.Path
 			if p.useTildeHome {
 				path = utils.TildePath(path)
 			}
 			t.Row(
-				wt.Branch,
+				branchWithMarker,
 				path,
 				p.truncateHash(wt.CommitHash),
 				p.formatTime(wt.CreatedAt),
