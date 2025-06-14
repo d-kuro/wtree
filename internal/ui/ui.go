@@ -47,9 +47,9 @@ func (p *Printer) PrintWorktrees(worktrees []models.Worktree, verbose bool) {
 	if verbose {
 		t = table.New().Headers("BRANCH", "PATH", "COMMIT", "CREATED", "TYPE")
 		for _, wt := range worktrees {
-			wtType := "additional"
+			wtType := models.WorktreeTypeWorktree
 			if wt.IsMain {
-				wtType = "main"
+				wtType = models.WorktreeTypeMain
 			}
 			path := wt.Path
 			if p.useTildeHome {
