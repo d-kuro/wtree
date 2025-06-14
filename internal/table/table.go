@@ -1,3 +1,6 @@
+// Package table provides a convenient interface for creating styled tables using lipgloss/table.
+// It simplifies table creation with predefined styles and a fluent builder API, supporting
+// various output formats, color schemes, and border styles.
 package table
 
 import (

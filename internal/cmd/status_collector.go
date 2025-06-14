@@ -149,48 +149,15 @@ func (c *StatusCollector) collectOne(ctx context.Context, worktree *models.Workt
 func (c *StatusCollector) collectGitStatus(ctx context.Context, g *git.Git) (*models.GitStatus, error) {
 	status := &models.GitStatus{}
 
-	// Create a timeout context for git operations
-	gitCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	output, err := g.RunWithContext(gitCtx, "status", "--porcelain=v1", "-uno")
-	if err != nil {
+	// Count modified, staged, and other file states
+	if err := c.countFileStates(ctx, g, status); err != nil {
 		return nil, err
 	}
 
-	for _, line := range strings.Split(output, "\n") {
-		if len(line) < 3 {
-			continue
-		}
-
-		index := line[0]
-		worktree := line[1]
-
-		if index != ' ' && index != '?' {
-			status.Staged++
-		}
-
-		switch worktree {
-		case 'M':
-			status.Modified++
-		case 'A':
-			status.Added++
-		case 'D':
-			status.Deleted++
-		case '?':
-			status.Untracked++
-		case 'U':
-			status.Conflicts++
-		}
-	}
-
-	// Reset timeout context for the next operation
-	gitCtx2, cancel2 := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel2()
-
-	untrackedFiles, err := g.RunWithContext(gitCtx2, "ls-files", "--others", "--exclude-standard")
-	if err == nil && untrackedFiles != "" {
-		status.Untracked = len(strings.Split(strings.TrimSpace(untrackedFiles), "\n"))
+	// Count untracked files separately for more accurate count
+	if err := c.countUntrackedFiles(ctx, g, status); err != nil {
+		// Non-fatal: continue even if we can't count untracked files
+		status.Untracked = 0
 	}
 
 	if c.fetchRemote {
@@ -201,47 +168,133 @@ func (c *StatusCollector) collectGitStatus(ctx context.Context, g *git.Git) (*mo
 	return status, nil
 }
 
+// countFileStates counts modified, staged, added, deleted, and conflicted files
+func (c *StatusCollector) countFileStates(ctx context.Context, g *git.Git, status *models.GitStatus) error {
+	gitCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	output, err := g.RunWithContext(gitCtx, "status", "--porcelain=v1", "-uno")
+	if err != nil {
+		return err
+	}
+
+	for _, line := range strings.Split(output, "\n") {
+		if len(line) < 3 {
+			continue
+		}
+
+		c.processStatusLine(line, status)
+	}
+
+	return nil
+}
+
+// processStatusLine processes a single line from git status output
+func (c *StatusCollector) processStatusLine(line string, status *models.GitStatus) {
+	index := line[0]
+	worktree := line[1]
+
+	if index != ' ' && index != '?' {
+		status.Staged++
+	}
+
+	switch worktree {
+	case 'M':
+		status.Modified++
+	case 'A':
+		status.Added++
+	case 'D':
+		status.Deleted++
+	case '?':
+		status.Untracked++
+	case 'U':
+		status.Conflicts++
+	}
+}
+
+// countUntrackedFiles counts untracked files using ls-files
+func (c *StatusCollector) countUntrackedFiles(ctx context.Context, g *git.Git, status *models.GitStatus) error {
+	gitCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	untrackedFiles, err := g.RunWithContext(gitCtx, "ls-files", "--others", "--exclude-standard")
+	if err != nil {
+		return err
+	}
+
+	if untrackedFiles != "" {
+		status.Untracked = len(strings.Split(strings.TrimSpace(untrackedFiles), "\n"))
+	}
+
+	return nil
+}
+
 func (c *StatusCollector) fetchRemoteStatus(ctx context.Context, g *git.Git, status *models.GitStatus) error {
-	// Create a timeout context for remote operations
+	// Get current branch and upstream
+	currentBranch, err := c.getCurrentBranch(ctx, g)
+	if err != nil {
+		return err
+	}
+
+	upstream, err := c.getUpstreamBranch(ctx, g, currentBranch)
+	if err != nil || upstream == "" {
+		return err
+	}
+
+	// Count ahead/behind commits
+	c.countAheadBehind(ctx, g, upstream, status)
+
+	return nil
+}
+
+// getCurrentBranch gets the current branch name
+func (c *StatusCollector) getCurrentBranch(ctx context.Context, g *git.Git) (string, error) {
 	gitCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	currentBranch, err := g.RunWithContext(gitCtx, "rev-parse", "--abbrev-ref", "HEAD")
 	if err != nil {
-		return err
+		return "", err
 	}
-	currentBranch = strings.TrimSpace(currentBranch)
+	return strings.TrimSpace(currentBranch), nil
+}
 
-	gitCtx2, cancel2 := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel2()
+// getUpstreamBranch gets the upstream branch for the current branch
+func (c *StatusCollector) getUpstreamBranch(ctx context.Context, g *git.Git, currentBranch string) (string, error) {
+	gitCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 
-	upstream, err := g.RunWithContext(gitCtx2, "rev-parse", "--abbrev-ref", currentBranch+"@{upstream}")
+	upstream, err := g.RunWithContext(gitCtx, "rev-parse", "--abbrev-ref", currentBranch+"@{upstream}")
 	if err != nil {
-		return err
+		return "", err
 	}
-	upstream = strings.TrimSpace(upstream)
+	return strings.TrimSpace(upstream), nil
+}
 
-	if upstream == "" {
-		return nil
+// countAheadBehind counts commits ahead and behind upstream
+func (c *StatusCollector) countAheadBehind(ctx context.Context, g *git.Git, upstream string, status *models.GitStatus) {
+	// Count commits ahead
+	status.Ahead = c.countRevList(ctx, g, upstream+"..HEAD")
+
+	// Count commits behind
+	status.Behind = c.countRevList(ctx, g, "HEAD.."+upstream)
+}
+
+// countRevList counts commits in a revision range
+func (c *StatusCollector) countRevList(ctx context.Context, g *git.Git, revRange string) int {
+	gitCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	output, err := g.RunWithContext(gitCtx, "rev-list", "--count", revRange)
+	if err != nil {
+		return 0
 	}
 
-	gitCtx3, cancel3 := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel3()
-
-	ahead, err := g.RunWithContext(gitCtx3, "rev-list", "--count", upstream+"..HEAD")
-	if err == nil {
-		_, _ = fmt.Sscanf(strings.TrimSpace(ahead), "%d", &status.Ahead)
+	var count int
+	if _, err := fmt.Sscanf(strings.TrimSpace(output), "%d", &count); err != nil {
+		return 0
 	}
-
-	gitCtx4, cancel4 := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel4()
-
-	behind, err := g.RunWithContext(gitCtx4, "rev-list", "--count", "HEAD.."+upstream)
-	if err == nil {
-		_, _ = fmt.Sscanf(strings.TrimSpace(behind), "%d", &status.Behind)
-	}
-
-	return nil
+	return count
 }
 
 func (c *StatusCollector) determineWorktreeState(status *models.GitStatus) models.WorktreeState {

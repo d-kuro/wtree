@@ -315,17 +315,24 @@ func (g *Git) GetRepositoryURL() (string, error) {
 	return strings.TrimSpace(output), nil
 }
 
-// RunCommand executes a git command and returns the output (public method).
+// RunCommand executes a git command with the provided arguments and returns the output.
+// This is the primary public interface for running arbitrary git commands.
+// The command is executed in the Git instance's working directory if set.
+// Returns the command output as a string, or an error if the command fails.
 func (g *Git) RunCommand(args ...string) (string, error) {
 	return g.run(args...)
 }
 
-// Run is an alias for RunCommand for compatibility.
+// Run is an alias for RunCommand maintained for backward compatibility.
+// New code should prefer using RunCommand for clarity.
 func (g *Git) Run(args ...string) (string, error) {
 	return g.run(args...)
 }
 
 // RunWithContext executes a git command with context support for cancellation and timeout.
+// The command will be terminated if the context is cancelled or times out.
+// This is useful for implementing timeouts or graceful shutdowns.
+// Returns the command output as a string, or an error if the command fails or is cancelled.
 func (g *Git) RunWithContext(ctx context.Context, args ...string) (string, error) {
 	return g.runWithContext(ctx, args...)
 }

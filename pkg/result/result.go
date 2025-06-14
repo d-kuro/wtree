@@ -41,8 +41,19 @@ func (r Result[T]) Error() error {
 	return r.err
 }
 
-// Unwrap returns the value or panics if there's an error.
-func (r Result[T]) Unwrap() T {
+// Unwrap returns the value and error.
+// Use this method when you want to handle the error explicitly.
+func (r Result[T]) Unwrap() (T, error) {
+	if r.err != nil {
+		var zero T
+		return zero, r.err
+	}
+	return *r.value, nil
+}
+
+// MustUnwrap returns the value or panics if there's an error.
+// Use this method only when you are certain the result contains no error.
+func (r Result[T]) MustUnwrap() T {
 	if r.err != nil {
 		panic(r.err)
 	}

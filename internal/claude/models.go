@@ -1,3 +1,6 @@
+// Package claude provides task queue management and execution for Claude Code integration.
+// It includes models, services, and executors for managing AI-assisted development tasks
+// with support for priorities, dependencies, and session management.
 package claude
 
 import (
@@ -9,40 +12,57 @@ import (
 type Priority int
 
 const (
-	PriorityVeryLow  Priority = 10  // Background tasks
-	PriorityLow      Priority = 25  // Nice-to-have features
-	PriorityNormal   Priority = 50  // Standard development tasks
-	PriorityHigh     Priority = 75  // Important features
-	PriorityUrgent   Priority = 90  // Critical fixes
-	PriorityCritical Priority = 100 // Blocking issues
+	// PriorityVeryLow is used for background tasks that can wait indefinitely.
+	PriorityVeryLow Priority = 10
+	// PriorityLow is used for nice-to-have features that are not time-sensitive.
+	PriorityLow Priority = 25
+	// PriorityNormal is the default priority for standard development tasks.
+	PriorityNormal Priority = 50
+	// PriorityHigh is used for important features that should be prioritized.
+	PriorityHigh Priority = 75
+	// PriorityUrgent is used for critical fixes that need immediate attention.
+	PriorityUrgent Priority = 90
+	// PriorityCritical is used for blocking issues that must be resolved first.
+	PriorityCritical Priority = 100
 )
 
 // Status represents the current state of a task
 type Status string
 
 const (
-	StatusPending   Status = "pending"   // Task is queued
-	StatusWaiting   Status = "waiting"   // Waiting for dependencies
-	StatusRunning   Status = "running"   // Currently executing
-	StatusCompleted Status = "completed" // Successfully finished
-	StatusFailed    Status = "failed"    // Execution failed
-	StatusSkipped   Status = "skipped"   // Skipped due to dependency policy
-	StatusCancelled Status = "cancelled" // Manually cancelled
+	// StatusPending indicates a task is queued and waiting to be executed.
+	StatusPending Status = "pending"
+	// StatusWaiting indicates a task is waiting for its dependencies to complete.
+	StatusWaiting Status = "waiting"
+	// StatusRunning indicates a task is currently being executed.
+	StatusRunning Status = "running"
+	// StatusCompleted indicates a task has been successfully finished.
+	StatusCompleted Status = "completed"
+	// StatusFailed indicates a task execution has failed.
+	StatusFailed Status = "failed"
+	// StatusSkipped indicates a task was skipped due to dependency policy.
+	StatusSkipped Status = "skipped"
+	// StatusCancelled indicates a task was manually cancelled.
+	StatusCancelled Status = "cancelled"
 )
 
 // DependencyPolicy defines how to handle dependency failures
 type DependencyPolicy string
 
 const (
-	DependencyPolicyWait DependencyPolicy = "wait" // Wait for dependencies to complete (default)
-	DependencyPolicySkip DependencyPolicy = "skip" // Skip this task if dependency fails
-	DependencyPolicyFail DependencyPolicy = "fail" // Fail this task if dependency fails
+	// DependencyPolicyWait waits for dependencies to complete regardless of their status (default).
+	DependencyPolicyWait DependencyPolicy = "wait"
+	// DependencyPolicySkip skips this task if any dependency fails.
+	DependencyPolicySkip DependencyPolicy = "skip"
+	// DependencyPolicyFail fails this task immediately if any dependency fails.
+	DependencyPolicyFail DependencyPolicy = "fail"
 )
 
 // TaskType represents the type of task
 type TaskType string
 
 const (
+	// TaskTypeDevelopment represents standard development tasks.
 	TaskTypeDevelopment TaskType = "development"
 )
 
@@ -50,10 +70,14 @@ const (
 type Capability string
 
 const (
+	// CapabilityCodeGeneration indicates the ability to generate new code.
 	CapabilityCodeGeneration Capability = "code_generation"
-	CapabilityTesting        Capability = "testing"
-	CapabilityRefactoring    Capability = "refactoring"
-	CapabilityDocumentation  Capability = "documentation"
+	// CapabilityTesting indicates the ability to write and run tests.
+	CapabilityTesting Capability = "testing"
+	// CapabilityRefactoring indicates the ability to refactor existing code.
+	CapabilityRefactoring Capability = "refactoring"
+	// CapabilityDocumentation indicates the ability to write documentation.
+	CapabilityDocumentation Capability = "documentation"
 )
 
 // Task represents a Claude Code development task

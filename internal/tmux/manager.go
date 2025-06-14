@@ -26,24 +26,24 @@ func NewSessionManager(config *SessionConfig, dataDir string) *SessionManager {
 	}
 }
 
-func (s *SessionManager) CreateSession(ctx context.Context, opts SessionOptions) (*Session, error) {
+func (sm *SessionManager) CreateSession(ctx context.Context, opts SessionOptions) (*Session, error) {
 	sessionName := fmt.Sprintf("gwq-%s-%s-%s", opts.Context, opts.Identifier, time.Now().Format("20060102150405"))
 
 	// Create session with or without command
 	if opts.Command != "" {
 		// Create session with command - when command finishes, session will automatically terminate
-		if err := s.tmuxCmd.NewSessionWithCommandContext(ctx, sessionName, opts.WorkingDir, opts.Command); err != nil {
+		if err := sm.tmuxCmd.NewSessionWithCommandContext(ctx, sessionName, opts.WorkingDir, opts.Command); err != nil {
 			return nil, fmt.Errorf("failed to create tmux session with command: %w", err)
 		}
 	} else {
 		// Create session without command (traditional behavior)
-		if err := s.tmuxCmd.NewSessionContext(ctx, sessionName, opts.WorkingDir); err != nil {
+		if err := sm.tmuxCmd.NewSessionContext(ctx, sessionName, opts.WorkingDir); err != nil {
 			return nil, fmt.Errorf("failed to create tmux session: %w", err)
 		}
 	}
 
-	if err := s.tmuxCmd.SetOptionContext(ctx, sessionName, "history-limit", s.config.HistoryLimit); err != nil {
-		_ = s.tmuxCmd.KillSession(sessionName)
+	if err := sm.tmuxCmd.SetOptionContext(ctx, sessionName, "history-limit", sm.config.HistoryLimit); err != nil {
+		_ = sm.tmuxCmd.KillSession(sessionName)
 		return nil, fmt.Errorf("failed to set history limit: %w", err)
 	}
 
@@ -55,15 +55,15 @@ func (s *SessionManager) CreateSession(ctx context.Context, opts SessionOptions)
 		WorkingDir:  opts.WorkingDir,
 		Command:     opts.Command,
 		StartTime:   time.Now(),
-		HistorySize: s.config.HistoryLimit,
+		HistorySize: sm.config.HistoryLimit,
 		Metadata:    opts.Metadata,
 	}
 
 	return session, nil
 }
 
-func (s *SessionManager) ListSessions() ([]*Session, error) {
-	tmuxSessions, err := s.tmuxCmd.ListSessionsDetailed()
+func (sm *SessionManager) ListSessions() ([]*Session, error) {
+	tmuxSessions, err := sm.tmuxCmd.ListSessionsDetailed()
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func (s *SessionManager) ListSessions() ([]*Session, error) {
 			continue
 		}
 
-		session := s.parseSessionFromTmux(tmuxSession)
+		session := sm.parseSessionFromTmux(tmuxSession)
 		if session != nil {
 			sessions = append(sessions, session)
 		}
@@ -84,7 +84,7 @@ func (s *SessionManager) ListSessions() ([]*Session, error) {
 	return sessions, nil
 }
 
-func (s *SessionManager) parseSessionFromTmux(info *SessionInfo) *Session {
+func (sm *SessionManager) parseSessionFromTmux(info *SessionInfo) *Session {
 	// Parse session name format: gwq-{context}-{identifier}-{timestamp}
 	re := regexp.MustCompile(`^gwq-([^-]+)-(.+)-(\d{14})$`)
 	matches := re.FindStringSubmatch(info.Name)
@@ -117,13 +117,13 @@ func (s *SessionManager) parseSessionFromTmux(info *SessionInfo) *Session {
 		WorkingDir:  info.WorkingDir,
 		Command:     command,
 		StartTime:   startTime,
-		HistorySize: s.config.HistoryLimit,
+		HistorySize: sm.config.HistoryLimit,
 		Metadata:    map[string]string{},
 	}
 }
 
-func (s *SessionManager) GetSession(id string) (*Session, error) {
-	sessions, err := s.ListSessions()
+func (sm *SessionManager) GetSession(id string) (*Session, error) {
+	sessions, err := sm.ListSessions()
 	if err != nil {
 		return nil, err
 	}
@@ -141,18 +141,18 @@ func (s *SessionManager) GetSession(id string) (*Session, error) {
 	return nil, fmt.Errorf("session not found: %s", id)
 }
 
-func (s *SessionManager) KillSession(id string) error {
-	session, err := s.GetSession(id)
+func (sm *SessionManager) KillSession(id string) error {
+	session, err := sm.GetSession(id)
 	if err != nil {
 		return err
 	}
 
-	return s.KillSessionDirect(session)
+	return sm.KillSessionDirect(session)
 }
 
-func (s *SessionManager) KillSessionDirect(session *Session) error {
-	if s.tmuxCmd.HasSession(session.SessionName) {
-		if err := s.tmuxCmd.KillSession(session.SessionName); err != nil {
+func (sm *SessionManager) KillSessionDirect(session *Session) error {
+	if sm.tmuxCmd.HasSession(session.SessionName) {
+		if err := sm.tmuxCmd.KillSession(session.SessionName); err != nil {
 			return fmt.Errorf("failed to kill tmux session: %w", err)
 		}
 	}
@@ -160,36 +160,42 @@ func (s *SessionManager) KillSessionDirect(session *Session) error {
 	return nil
 }
 
-func (s *SessionManager) AttachSession(id string) error {
-	session, err := s.GetSession(id)
+func (sm *SessionManager) AttachSession(id string) error {
+	session, err := sm.GetSession(id)
 	if err != nil {
 		return err
 	}
 
-	return s.AttachSessionDirect(session)
+	return sm.AttachSessionDirect(session)
 }
 
-func (s *SessionManager) AttachSessionDirect(session *Session) error {
-	if !s.tmuxCmd.HasSession(session.SessionName) {
+func (sm *SessionManager) AttachSessionDirect(session *Session) error {
+	if !sm.tmuxCmd.HasSession(session.SessionName) {
 		return fmt.Errorf("tmux session %s no longer exists", session.SessionName)
 	}
 
-	return s.tmuxCmd.AttachSession(session.SessionName)
+	return sm.tmuxCmd.AttachSession(session.SessionName)
 }
 
 func generateID() string {
 	b := make([]byte, 6)
-	_, _ = rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		// Fall back to a basic ID if crypto/rand fails
+		return fmt.Sprintf("%012x", len(b)*1000000)
+	}
 	return hex.EncodeToString(b)
 }
 
 func generateShortID() string {
 	b := make([]byte, 3)
-	_, _ = rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		// Fall back to a basic short ID if crypto/rand fails
+		return fmt.Sprintf("%06x", len(b)*1000000)
+	}
 	return hex.EncodeToString(b)
 }
 
 // HasSession checks if a session exists
-func (s *SessionManager) HasSession(sessionName string) bool {
-	return s.tmuxCmd.HasSession(sessionName)
+func (sm *SessionManager) HasSession(sessionName string) bool {
+	return sm.tmuxCmd.HasSession(sessionName)
 }

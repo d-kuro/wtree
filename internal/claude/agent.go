@@ -30,13 +30,13 @@ func NewClaudeAgent(config *models.ClaudeConfig, sessionMgr *tmux.SessionManager
 }
 
 // Name returns the agent name
-func (c *ClaudeAgent) Name() string {
+func (ca *ClaudeAgent) Name() string {
 	return "claude"
 }
 
 // Version returns the Claude Code version (if available)
-func (c *ClaudeAgent) Version() string {
-	cmd := exec.Command(c.config.Executable, "--version")
+func (ca *ClaudeAgent) Version() string {
+	cmd := exec.Command(ca.config.Executable, "--version")
 	output, err := cmd.Output()
 	if err != nil {
 		return "unknown"
@@ -45,7 +45,7 @@ func (c *ClaudeAgent) Version() string {
 }
 
 // Capabilities returns the capabilities of the Claude agent
-func (c *ClaudeAgent) Capabilities() []Capability {
+func (ca *ClaudeAgent) Capabilities() []Capability {
 	return []Capability{
 		CapabilityCodeGeneration,
 		CapabilityTesting,
@@ -55,11 +55,11 @@ func (c *ClaudeAgent) Capabilities() []Capability {
 }
 
 // Execute runs a development task using Claude Code
-func (c *ClaudeAgent) Execute(ctx context.Context, task *Task) (*TaskResult, error) {
+func (ca *ClaudeAgent) Execute(ctx context.Context, task *Task) (*TaskResult, error) {
 	startTime := time.Now()
 
 	// Ensure worktree exists for the task
-	if err := c.ensureWorktree(task); err != nil {
+	if err := ca.ensureWorktree(task); err != nil {
 		return &TaskResult{
 			ExitCode: 1,
 			Duration: time.Since(startTime),
@@ -68,10 +68,10 @@ func (c *ClaudeAgent) Execute(ctx context.Context, task *Task) (*TaskResult, err
 	}
 
 	// Build Claude Code command
-	cmd := c.buildClaudeCommand(task)
+	cmd := ca.buildClaudeCommand(task)
 
 	// Create tmux session for persistent execution in worktree
-	sessionID, err := c.CreateSession(ctx, task)
+	sessionID, err := ca.CreateSession(ctx, task)
 	if err != nil {
 		return &TaskResult{
 			ExitCode: 1,
@@ -83,7 +83,7 @@ func (c *ClaudeAgent) Execute(ctx context.Context, task *Task) (*TaskResult, err
 	task.SessionID = sessionID
 
 	// Monitor execution and handle results
-	result, err := c.monitorExecution(ctx, sessionID, task, cmd, startTime)
+	result, err := ca.monitorExecution(ctx, sessionID, task, cmd, startTime)
 	if err != nil {
 		return result, err
 	}
@@ -92,8 +92,8 @@ func (c *ClaudeAgent) Execute(ctx context.Context, task *Task) (*TaskResult, err
 }
 
 // HealthCheck verifies Claude Code is available and working
-func (c *ClaudeAgent) HealthCheck() error {
-	cmd := exec.Command(c.config.Executable, "--help")
+func (ca *ClaudeAgent) HealthCheck() error {
+	cmd := exec.Command(ca.config.Executable, "--help")
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("claude Code executable not available: %w", err)
 	}
@@ -101,13 +101,13 @@ func (c *ClaudeAgent) HealthCheck() error {
 }
 
 // IsAvailable checks if Claude Code is available
-func (c *ClaudeAgent) IsAvailable() bool {
-	return c.HealthCheck() == nil
+func (ca *ClaudeAgent) IsAvailable() bool {
+	return ca.HealthCheck() == nil
 }
 
 // CreateSession creates a tmux session for the task
-func (c *ClaudeAgent) CreateSession(ctx context.Context, task *Task) (string, error) {
-	cmd := c.buildClaudeCommand(task)
+func (ca *ClaudeAgent) CreateSession(ctx context.Context, task *Task) (string, error) {
+	cmd := ca.buildClaudeCommand(task)
 
 	sessionOpts := tmux.SessionOptions{
 		Context:    "claude",
@@ -124,7 +124,7 @@ func (c *ClaudeAgent) CreateSession(ctx context.Context, task *Task) (string, er
 		},
 	}
 
-	session, err := c.sessionMgr.CreateSession(ctx, sessionOpts)
+	session, err := ca.sessionMgr.CreateSession(ctx, sessionOpts)
 	if err != nil {
 		return "", err
 	}
@@ -133,14 +133,14 @@ func (c *ClaudeAgent) CreateSession(ctx context.Context, task *Task) (string, er
 }
 
 // AttachSession attaches to an existing session
-func (c *ClaudeAgent) AttachSession(ctx context.Context, sessionID string) error {
-	return c.sessionMgr.AttachSession(sessionID)
+func (ca *ClaudeAgent) AttachSession(ctx context.Context, sessionID string) error {
+	return ca.sessionMgr.AttachSession(sessionID)
 }
 
 // ensureWorktree ensures the worktree exists for the task
-func (c *ClaudeAgent) ensureWorktree(task *Task) error {
+func (ca *ClaudeAgent) ensureWorktree(task *Task) error {
 	// If no worktree manager is available, skip worktree handling
-	if c.worktreeMgr == nil {
+	if ca.worktreeMgr == nil {
 		if task.WorktreePath != "" && task.RepositoryRoot != "" {
 			// Use provided paths if available
 			return nil
@@ -160,7 +160,7 @@ func (c *ClaudeAgent) ensureWorktree(task *Task) error {
 		return fmt.Errorf("worktree field is required")
 	}
 
-	worktreePath, err := c.worktreeMgr.GetWorktreePath(task.Worktree)
+	worktreePath, err := ca.worktreeMgr.GetWorktreePath(task.Worktree)
 	if err != nil {
 		return fmt.Errorf("worktree '%s' not found, please create it first using 'gwq add %s': %w", task.Worktree, task.Worktree, err)
 	}
@@ -170,26 +170,26 @@ func (c *ClaudeAgent) ensureWorktree(task *Task) error {
 }
 
 // buildClaudeCommand builds the Claude Code command for execution
-func (c *ClaudeAgent) buildClaudeCommand(task *Task) string {
+func (ca *ClaudeAgent) buildClaudeCommand(task *Task) string {
 	// Core automation options (always included)
 	args := []string{
-		c.config.Executable,
+		ca.config.Executable,
 		"--dangerously-skip-permissions", // REQUIRED for automation
 		"--print",                        // Non-interactive mode
 	}
 
 	// Add any additional configured arguments (only supported Claude options)
-	args = append(args, c.config.AdditionalArgs...)
+	args = append(args, ca.config.AdditionalArgs...)
 
 	// Build comprehensive task prompt
-	prompt := c.buildTaskPrompt(task)
+	prompt := ca.buildTaskPrompt(task)
 	args = append(args, prompt)
 
 	return strings.Join(args, " ")
 }
 
 // buildTaskPrompt builds a comprehensive prompt for the task
-func (c *ClaudeAgent) buildTaskPrompt(task *Task) string {
+func (ca *ClaudeAgent) buildTaskPrompt(task *Task) string {
 	var prompt strings.Builder
 
 	prompt.WriteString(fmt.Sprintf("# Task: %s\n\n", task.Name))
@@ -225,73 +225,92 @@ func (c *ClaudeAgent) buildTaskPrompt(task *Task) string {
 	return fmt.Sprintf(`"%s"`, prompt.String())
 }
 
+const monitorTickInterval = 5 * time.Second
+
 // monitorExecution monitors the Claude Code execution and returns results
-func (c *ClaudeAgent) monitorExecution(ctx context.Context, sessionID string, task *Task, cmd string, startTime time.Time) (*TaskResult, error) {
-	ticker := time.NewTicker(5 * time.Second) // Check every 5 seconds
+func (ca *ClaudeAgent) monitorExecution(ctx context.Context, sessionID string, task *Task, cmd string, startTime time.Time) (*TaskResult, error) {
+	ticker := time.NewTicker(monitorTickInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
-			return &TaskResult{
-				ExitCode: 1,
-				Duration: time.Since(startTime),
-				Error:    "execution cancelled",
-			}, ctx.Err()
+			return ca.createCancelledResult(startTime), ctx.Err()
 
 		case <-ticker.C:
-			// Check if tmux session still exists
-			sessionExists, err := c.checkSessionExists(sessionID)
-			if err != nil {
-				return &TaskResult{
-					ExitCode: 1,
-					Duration: time.Since(startTime),
-					Error:    fmt.Sprintf("failed to check session: %v", err),
-				}, err
-			}
-
-			if !sessionExists {
-				// Session ended - check if it was successful
-				return c.determineTaskResult(sessionID, task, startTime)
-			}
-
-			// Check if Claude Code process is still running
-			claudeRunning, err := c.checkClaudeProcessRunning(sessionID)
-			if err != nil {
-				fmt.Printf("Warning: failed to check Claude process: %v\n", err)
-				continue
-			}
-
-			if !claudeRunning {
-				// Claude process finished - check final state
-				return c.determineTaskResult(sessionID, task, startTime)
-			}
-
-			// Check for completion patterns in session output
-			completed, exitCode, err := c.checkSessionCompletion(sessionID)
-			if err != nil {
-				fmt.Printf("Warning: failed to check session completion: %v\n", err)
-				continue
-			}
-
-			if completed {
-				return &TaskResult{
-					ExitCode:     exitCode,
-					Duration:     time.Since(startTime),
-					FilesChanged: c.detectChangedFiles(task.WorktreePath),
-				}, nil
+			result, shouldContinue := ca.checkExecutionStatus(sessionID, task, startTime)
+			if !shouldContinue {
+				return result, nil
 			}
 		}
 	}
 }
 
+// checkExecutionStatus checks the current execution status and returns result if complete
+func (ca *ClaudeAgent) checkExecutionStatus(sessionID string, task *Task, startTime time.Time) (*TaskResult, bool) {
+	// Check if tmux session still exists
+	sessionExists, err := ca.checkSessionExists(sessionID)
+	if err != nil {
+		return &TaskResult{
+			ExitCode: 1,
+			Duration: time.Since(startTime),
+			Error:    fmt.Sprintf("failed to check session: %v", err),
+		}, false
+	}
+
+	if !sessionExists {
+		// Session ended - check if it was successful
+		result, _ := ca.determineTaskResult(sessionID, task, startTime)
+		return result, false
+	}
+
+	// Check if Claude Code process is still running
+	claudeRunning, err := ca.checkClaudeProcessRunning(sessionID)
+	if err != nil {
+		fmt.Printf("Warning: failed to check Claude process: %v\n", err)
+		return nil, true // Continue monitoring
+	}
+
+	if !claudeRunning {
+		// Claude process finished - check final state
+		result, _ := ca.determineTaskResult(sessionID, task, startTime)
+		return result, false
+	}
+
+	// Check for completion patterns in session output
+	completed, exitCode, err := ca.checkSessionCompletion(sessionID)
+	if err != nil {
+		fmt.Printf("Warning: failed to check session completion: %v\n", err)
+		return nil, true // Continue monitoring
+	}
+
+	if completed {
+		return &TaskResult{
+			ExitCode:     exitCode,
+			Duration:     time.Since(startTime),
+			FilesChanged: ca.detectChangedFiles(task.WorktreePath),
+		}, false
+	}
+
+	return nil, true // Continue monitoring
+}
+
+// createCancelledResult creates a result for cancelled execution
+func (ca *ClaudeAgent) createCancelledResult(startTime time.Time) *TaskResult {
+	return &TaskResult{
+		ExitCode: 1,
+		Duration: time.Since(startTime),
+		Error:    "execution cancelled",
+	}
+}
+
 // checkSessionExists checks if a tmux session exists
-func (c *ClaudeAgent) checkSessionExists(sessionID string) (bool, error) {
-	return c.sessionMgr.HasSession(sessionID), nil
+func (ca *ClaudeAgent) checkSessionExists(sessionID string) (bool, error) {
+	return ca.sessionMgr.HasSession(sessionID), nil
 }
 
 // checkClaudeProcessRunning checks if Claude process is still running in session
-func (c *ClaudeAgent) checkClaudeProcessRunning(sessionID string) (bool, error) {
+func (ca *ClaudeAgent) checkClaudeProcessRunning(sessionID string) (bool, error) {
 	// Use tmux to check if there are running processes
 	cmd := exec.Command("tmux", "list-panes", "-t", sessionID, "-F", "#{pane_current_command}")
 	output, err := cmd.Output()
@@ -311,7 +330,7 @@ func (c *ClaudeAgent) checkClaudeProcessRunning(sessionID string) (bool, error) 
 }
 
 // checkSessionCompletion checks if session has completion indicators
-func (c *ClaudeAgent) checkSessionCompletion(sessionID string) (bool, int, error) {
+func (ca *ClaudeAgent) checkSessionCompletion(sessionID string) (bool, int, error) {
 	// Capture recent session output to check for completion patterns
 	cmd := exec.Command("tmux", "capture-pane", "-t", sessionID, "-p", "-S", "-10")
 	output, err := cmd.Output()
@@ -336,9 +355,9 @@ func (c *ClaudeAgent) checkSessionCompletion(sessionID string) (bool, int, error
 }
 
 // determineTaskResult determines the final result of a task
-func (c *ClaudeAgent) determineTaskResult(sessionID string, task *Task, startTime time.Time) (*TaskResult, error) {
+func (ca *ClaudeAgent) determineTaskResult(sessionID string, task *Task, startTime time.Time) (*TaskResult, error) {
 	// Check session output for results
-	completed, exitCode, err := c.checkSessionCompletion(sessionID)
+	completed, exitCode, err := ca.checkSessionCompletion(sessionID)
 	if err != nil {
 		return &TaskResult{
 			ExitCode: 1,
@@ -350,7 +369,7 @@ func (c *ClaudeAgent) determineTaskResult(sessionID string, task *Task, startTim
 	result := &TaskResult{
 		ExitCode:     exitCode,
 		Duration:     time.Since(startTime),
-		FilesChanged: c.detectChangedFiles(task.WorktreePath),
+		FilesChanged: ca.detectChangedFiles(task.WorktreePath),
 	}
 
 	if !completed {
@@ -361,7 +380,7 @@ func (c *ClaudeAgent) determineTaskResult(sessionID string, task *Task, startTim
 }
 
 // detectChangedFiles detects files that were changed during task execution
-func (c *ClaudeAgent) detectChangedFiles(worktreePath string) []string {
+func (ca *ClaudeAgent) detectChangedFiles(worktreePath string) []string {
 	if worktreePath == "" {
 		return []string{}
 	}

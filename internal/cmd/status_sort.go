@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/d-kuro/gwq/pkg/models"
@@ -11,30 +11,62 @@ import (
 func sortStatuses(statuses []*models.WorktreeStatus, sortBy string) {
 	switch strings.ToLower(sortBy) {
 	case "branch", "name":
-		sort.Slice(statuses, func(i, j int) bool {
-			return statuses[i].Branch < statuses[j].Branch
+		slices.SortFunc(statuses, func(a, b *models.WorktreeStatus) int {
+			if a.Branch < b.Branch {
+				return -1
+			} else if a.Branch > b.Branch {
+				return 1
+			}
+			return 0
 		})
 	case "status":
-		sort.Slice(statuses, func(i, j int) bool {
-			return getStatusPriority(statuses[i].Status) < getStatusPriority(statuses[j].Status)
+		slices.SortFunc(statuses, func(a, b *models.WorktreeStatus) int {
+			aPriority := getStatusPriority(a.Status)
+			bPriority := getStatusPriority(b.Status)
+			if aPriority < bPriority {
+				return -1
+			} else if aPriority > bPriority {
+				return 1
+			}
+			return 0
 		})
 	case "modified", "changes":
-		sort.Slice(statuses, func(i, j int) bool {
-			iChanges := countTotalChanges(statuses[i].GitStatus)
-			jChanges := countTotalChanges(statuses[j].GitStatus)
-			return iChanges > jChanges
+		slices.SortFunc(statuses, func(a, b *models.WorktreeStatus) int {
+			aChanges := countTotalChanges(a.GitStatus)
+			bChanges := countTotalChanges(b.GitStatus)
+			if aChanges > bChanges {
+				return -1
+			} else if aChanges < bChanges {
+				return 1
+			}
+			return 0
 		})
 	case "activity", "time":
-		sort.Slice(statuses, func(i, j int) bool {
-			return statuses[i].LastActivity.After(statuses[j].LastActivity)
+		slices.SortFunc(statuses, func(a, b *models.WorktreeStatus) int {
+			if a.LastActivity.After(b.LastActivity) {
+				return -1
+			} else if a.LastActivity.Before(b.LastActivity) {
+				return 1
+			}
+			return 0
 		})
 	case "ahead":
-		sort.Slice(statuses, func(i, j int) bool {
-			return statuses[i].GitStatus.Ahead > statuses[j].GitStatus.Ahead
+		slices.SortFunc(statuses, func(a, b *models.WorktreeStatus) int {
+			if a.GitStatus.Ahead > b.GitStatus.Ahead {
+				return -1
+			} else if a.GitStatus.Ahead < b.GitStatus.Ahead {
+				return 1
+			}
+			return 0
 		})
 	case "behind":
-		sort.Slice(statuses, func(i, j int) bool {
-			return statuses[i].GitStatus.Behind > statuses[j].GitStatus.Behind
+		slices.SortFunc(statuses, func(a, b *models.WorktreeStatus) int {
+			if a.GitStatus.Behind > b.GitStatus.Behind {
+				return -1
+			} else if a.GitStatus.Behind < b.GitStatus.Behind {
+				return 1
+			}
+			return 0
 		})
 	}
 }
