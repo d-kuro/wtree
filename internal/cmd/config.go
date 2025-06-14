@@ -112,7 +112,7 @@ func runConfigGet(cmd *cobra.Command, args []string) error {
 	value := config.GetValue(key)
 
 	if value == nil {
-		return fmt.Errorf("configuration key not found: %s", key)
+		return fmt.Errorf("configuration key '%s' not found - use 'gwq config list' to see available keys", key)
 	}
 
 	fmt.Println(value)

@@ -2,12 +2,12 @@ package tmux
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/d-kuro/gwq/pkg/utils"
 )
 
 type SessionManager struct {
@@ -48,7 +48,7 @@ func (sm *SessionManager) CreateSession(ctx context.Context, opts SessionOptions
 	}
 
 	session := &Session{
-		ID:          generateID(),
+		ID:          utils.GenerateID(),
 		SessionName: sessionName,
 		Context:     opts.Context,
 		Identifier:  opts.Identifier,
@@ -110,7 +110,7 @@ func (sm *SessionManager) parseSessionFromTmux(info *SessionInfo) *Session {
 	}
 
 	return &Session{
-		ID:          generateShortID(),
+		ID:          utils.GenerateShortID(),
 		SessionName: info.Name,
 		Context:     context,
 		Identifier:  identifier,
@@ -175,24 +175,6 @@ func (sm *SessionManager) AttachSessionDirect(session *Session) error {
 	}
 
 	return sm.tmuxCmd.AttachSession(session.SessionName)
-}
-
-func generateID() string {
-	b := make([]byte, 6)
-	if _, err := rand.Read(b); err != nil {
-		// Fall back to a basic ID if crypto/rand fails
-		return fmt.Sprintf("%012x", len(b)*1000000)
-	}
-	return hex.EncodeToString(b)
-}
-
-func generateShortID() string {
-	b := make([]byte, 3)
-	if _, err := rand.Read(b); err != nil {
-		// Fall back to a basic short ID if crypto/rand fails
-		return fmt.Sprintf("%06x", len(b)*1000000)
-	}
-	return hex.EncodeToString(b)
 }
 
 // HasSession checks if a session exists

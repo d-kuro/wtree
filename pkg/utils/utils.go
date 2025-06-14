@@ -3,6 +3,9 @@ package utils
 
 import (
 	"cmp"
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -93,4 +96,36 @@ func TildePath(path string) string {
 	}
 
 	return path
+}
+
+// GenerateID generates a random ID (12 characters).
+func GenerateID() string {
+	b := make([]byte, 6)
+	if _, err := rand.Read(b); err != nil {
+		// Fall back to a basic ID if crypto/rand fails
+		return fmt.Sprintf("%012x", len(b)*1000000)
+	}
+	return hex.EncodeToString(b)
+}
+
+// GenerateShortID generates a short random ID (6 characters).
+func GenerateShortID() string {
+	b := make([]byte, 3)
+	if _, err := rand.Read(b); err != nil {
+		// Fall back to a basic short ID if crypto/rand fails
+		return fmt.Sprintf("%06x", len(b)*1000000)
+	}
+	return hex.EncodeToString(b)
+}
+
+// GenerateUUID generates a UUID-like string.
+func GenerateUUID() string {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		// Fall back to a deterministic UUID-like string if crypto/rand fails
+		return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+			0, 0, 0, 0, 0)
+	}
+	return fmt.Sprintf("%x-%x-%x-%x-%x",
+		b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
 }

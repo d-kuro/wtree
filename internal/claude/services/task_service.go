@@ -1,14 +1,13 @@
 package services
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/d-kuro/gwq/internal/claude"
+	"github.com/d-kuro/gwq/pkg/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -56,7 +55,7 @@ func (s *TaskService) CreateTask(req *CreateTaskRequest) (*claude.Task, error) {
 
 	// Create task
 	task := &claude.Task{
-		ID:                   s.generateTaskID(),
+		ID:                   utils.GenerateShortID(),
 		Name:                 req.Name,
 		Priority:             claude.Priority(req.Priority),
 		Status:               claude.StatusPending,
@@ -361,14 +360,4 @@ func (s *TaskService) mergeTaskConfig(defaultConfig *claude.TaskConfig, taskConf
 	}
 	defaultConfig.AutoCommit = taskConfig.AutoCommit
 	defaultConfig.BackupFiles = taskConfig.BackupFiles
-}
-
-// generateTaskID generates a unique task ID
-func (s *TaskService) generateTaskID() string {
-	b := make([]byte, 4)
-	if _, err := rand.Read(b); err != nil {
-		// Fall back to a basic timestamp-based ID if crypto/rand fails
-		return fmt.Sprintf("%08x", len(b)*1000000)
-	}
-	return hex.EncodeToString(b)
 }

@@ -4,6 +4,7 @@
 - `make build`: Build the project
 - `make test`: Run tests
 - `make lint`: Run linters
+- `make fmt`: Format code
 - `go test ./...`: Run all tests
 - `go mod tidy`: Clean up module dependencies
 
@@ -23,7 +24,7 @@
 - Ensure test coverage for edge cases
 
 ## Workflow Guidelines
-- IMPORTANT: Always run `make lint` and `make test` after making code changes
+- IMPORTANT: Always run `make fmt`, `make lint` and `make test` after making code changes
 - Research existing code patterns before implementing new features
 - When editing code, first understand the surrounding context and imports
 - Be specific and thorough when planning complex changes
