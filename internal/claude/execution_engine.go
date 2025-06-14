@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/d-kuro/gwq/pkg/models"
+	"github.com/d-kuro/gwq/pkg/utils"
 )
 
 // ExecutionType represents the type of execution
@@ -300,12 +301,12 @@ func FilterByStatus(status ExecutionStatus) ExecutionFilter {
 
 // generateExecutionID generates a unique execution ID with type prefix
 func (ee *ExecutionEngine) generateExecutionID(execType ExecutionType) string {
-	return fmt.Sprintf("%s-%s", execType, generateShortID())
+	return fmt.Sprintf("%s-%s", execType, utils.GenerateShortID())
 }
 
 // generateSessionID generates a unique session ID
 func (ee *ExecutionEngine) generateSessionID() string {
-	return generateUUID()
+	return utils.GenerateUUID()
 }
 
 // buildTaskPrompt builds a comprehensive prompt for tasks

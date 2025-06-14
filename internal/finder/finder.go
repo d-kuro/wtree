@@ -40,7 +40,7 @@ func NewWithUI(g *git.Git, config *models.FinderConfig, uiConfig *models.UIConfi
 // SelectWorktree displays a fuzzy finder for worktree selection.
 func (f *Finder) SelectWorktree(worktrees []models.Worktree) (*models.Worktree, error) {
 	if len(worktrees) == 0 {
-		return nil, fmt.Errorf("no worktrees available")
+		return nil, fmt.Errorf("no worktrees available for selection")
 	}
 
 	opts := []fuzzyfinder.Option{
@@ -83,7 +83,7 @@ func (f *Finder) SelectWorktree(worktrees []models.Worktree) (*models.Worktree, 
 // SelectBranch displays a fuzzy finder for branch selection.
 func (f *Finder) SelectBranch(branches []models.Branch) (*models.Branch, error) {
 	if len(branches) == 0 {
-		return nil, fmt.Errorf("no branches available")
+		return nil, fmt.Errorf("no branches available for selection")
 	}
 
 	opts := []fuzzyfinder.Option{
@@ -124,7 +124,7 @@ func (f *Finder) SelectBranch(branches []models.Branch) (*models.Branch, error) 
 // SelectMultipleWorktrees displays a fuzzy finder for multiple worktree selection.
 func (f *Finder) SelectMultipleWorktrees(worktrees []models.Worktree) ([]models.Worktree, error) {
 	if len(worktrees) == 0 {
-		return nil, fmt.Errorf("no worktrees available")
+		return nil, fmt.Errorf("no worktrees available for multiple selection")
 	}
 
 	opts := []fuzzyfinder.Option{
@@ -172,7 +172,7 @@ func (f *Finder) SelectMultipleWorktrees(worktrees []models.Worktree) ([]models.
 // SelectSession displays a fuzzy finder for session selection.
 func (f *Finder) SelectSession(sessions []*tmux.Session) (*tmux.Session, error) {
 	if len(sessions) == 0 {
-		return nil, fmt.Errorf("no sessions available")
+		return nil, fmt.Errorf("no tmux sessions available for selection")
 	}
 
 	opts := f.buildSessionFinderOptions(sessions)
@@ -188,7 +188,7 @@ func (f *Finder) SelectSession(sessions []*tmux.Session) (*tmux.Session, error) 
 // SelectMultipleSessions displays a fuzzy finder for multiple session selection.
 func (f *Finder) SelectMultipleSessions(sessions []*tmux.Session) ([]*tmux.Session, error) {
 	if len(sessions) == 0 {
-		return nil, fmt.Errorf("no sessions available")
+		return nil, fmt.Errorf("no tmux sessions available for multiple selection")
 	}
 
 	opts := f.buildSessionFinderOptions(sessions)

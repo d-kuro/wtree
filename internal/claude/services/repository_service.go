@@ -129,7 +129,7 @@ func (r *RepositoryService) FindWorktreeByName(repoRoot, name string) (string, e
 	// Use gwq worktree logic to find worktree path
 	worktreePath, err := wm.GetWorktreePath(name)
 	if err != nil {
-		return "", fmt.Errorf("worktree not found: %s (using gwq worktree management)", name)
+		return "", fmt.Errorf("worktree '%s' not found in gwq worktree management - use 'gwq add %s' to create it", name, name)
 	}
 
 	// Verify the worktree actually exists
