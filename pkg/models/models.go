@@ -192,3 +192,11 @@ type ClaudeHeadlessFormattingConfig struct {
 	ShowTimingInfo    bool `mapstructure:"show_timing_info"`    // Show timing information
 	MaxContentLength  int  `mapstructure:"max_content_length"`  // Maximum content length for display
 }
+
+// Worktree type constants for display purposes.
+const (
+	// WorktreeTypeMain represents the main worktree (repository root).
+	WorktreeTypeMain = "main"
+	// WorktreeTypeWorktree represents an additional worktree.
+	WorktreeTypeWorktree = "worktree"
+)
