@@ -61,7 +61,7 @@ func Parallel[In, Out any](stage Stage[In, Out], inputs []In) ([]Out, []error) {
 		}(i, input)
 	}
 
-	for i := 0; i < len(inputs); i++ {
+	for range len(inputs) {
 		<-done
 	}
 

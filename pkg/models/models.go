@@ -95,12 +95,18 @@ type WorktreeStatus struct {
 type WorktreeState string
 
 const (
-	WorktreeStatusClean    WorktreeState = "clean"
+	// WorktreeStatusClean indicates a worktree with no uncommitted changes.
+	WorktreeStatusClean WorktreeState = "clean"
+	// WorktreeStatusModified indicates a worktree with uncommitted modifications.
 	WorktreeStatusModified WorktreeState = "modified"
-	WorktreeStatusStaged   WorktreeState = "staged"
+	// WorktreeStatusStaged indicates a worktree with staged changes ready to commit.
+	WorktreeStatusStaged WorktreeState = "staged"
+	// WorktreeStatusConflict indicates a worktree with merge conflicts.
 	WorktreeStatusConflict WorktreeState = "conflict"
-	WorktreeStatusStale    WorktreeState = "stale"
-	WorktreeStatusUnknown  WorktreeState = "unknown"
+	// WorktreeStatusStale indicates a worktree that is out of sync with the remote.
+	WorktreeStatusStale WorktreeState = "stale"
+	// WorktreeStatusUnknown indicates a worktree with an undetermined status.
+	WorktreeStatusUnknown WorktreeState = "unknown"
 )
 
 // GitStatus contains detailed git status information.

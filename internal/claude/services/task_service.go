@@ -366,6 +366,9 @@ func (s *TaskService) mergeTaskConfig(defaultConfig *claude.TaskConfig, taskConf
 // generateTaskID generates a unique task ID
 func (s *TaskService) generateTaskID() string {
 	b := make([]byte, 4)
-	_, _ = rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		// Fall back to a basic timestamp-based ID if crypto/rand fails
+		return fmt.Sprintf("%08x", len(b)*1000000)
+	}
 	return hex.EncodeToString(b)
 }
