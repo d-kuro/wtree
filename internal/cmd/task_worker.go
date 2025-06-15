@@ -47,15 +47,21 @@ var taskWorkerStartCmd = &cobra.Command{
 	Short: "Start Claude Code worker",
 	Long: `Start a Claude Code worker to process tasks from the queue.
 
-The worker will continuously poll the task queue for executable tasks,
-resolve dependencies, and execute tasks using Claude Code in dedicated
-tmux sessions. The worker respects resource limits and parallelism
-constraints configured in the Claude settings.
+The worker will poll the task queue for executable tasks, resolve dependencies,
+and execute tasks using Claude Code in dedicated tmux sessions. The worker
+respects resource limits and parallelism constraints configured in the Claude
+settings.
+
+By default, the worker exits when there are no more tasks to process. Use the
+--wait flag to keep the worker running and waiting for new tasks.
 
 The worker runs in the foreground by default and can be stopped with Ctrl+C.
 All active tasks will be allowed to complete gracefully during shutdown.`,
-	Example: `  # Start with default parallelism
+	Example: `  # Start and exit when queue is empty
   gwq task worker start
+
+  # Start and keep waiting for new tasks
+  gwq task worker start --wait
 
   # Start with custom parallelism
   gwq task worker start --parallel 3
@@ -110,6 +116,7 @@ var (
 	taskWorkerTimeout  time.Duration
 	taskWorkerVerbose  bool
 	taskWorkerJSON     bool
+	taskWorkerWait     bool
 )
 
 func init() {
@@ -119,6 +126,7 @@ func init() {
 	// Start command flags
 	taskWorkerStartCmd.Flags().IntVar(&taskWorkerParallel, "parallel", 0, "Maximum parallel tasks (0 = use config default)")
 	taskWorkerStartCmd.Flags().BoolVar(&taskWorkerDaemon, "daemon", false, "Run in background as daemon")
+	taskWorkerStartCmd.Flags().BoolVar(&taskWorkerWait, "wait", false, "Keep running even when no tasks are available")
 
 	// Stop command flags
 	taskWorkerStopCmd.Flags().DurationVar(&taskWorkerTimeout, "timeout", 5*time.Minute, "Graceful shutdown timeout")
@@ -165,6 +173,7 @@ func runTaskWorkerStart(cmd *cobra.Command, args []string) error {
 		DependencyGraph: dependencyGraph,
 		MaxParallel:     taskWorkerParallel,
 		PollInterval:    5 * time.Second,
+		WaitForTasks:    taskWorkerWait,
 	})
 
 	// Handle shutdown gracefully
@@ -254,6 +263,7 @@ type TaskWorker struct {
 	dependencyGraph *claude.DependencyGraph
 	running         bool
 	mu              sync.RWMutex
+	emptyPollCount  int // Track consecutive empty polls
 }
 
 type TaskWorkerConfig struct {
@@ -263,6 +273,7 @@ type TaskWorkerConfig struct {
 	DependencyGraph *claude.DependencyGraph
 	MaxParallel     int
 	PollInterval    time.Duration
+	WaitForTasks    bool
 }
 
 func NewTaskWorker(config TaskWorkerConfig) *TaskWorker {
@@ -303,8 +314,22 @@ func (w *TaskWorker) Start(ctx context.Context) error {
 			fmt.Println("Worker shutting down...")
 			return w.shutdown(ctx)
 		case <-ticker.C:
-			if err := w.processTasks(ctx); err != nil {
+			hasMore, err := w.processTasks(ctx)
+			if err != nil {
 				fmt.Printf("Error processing tasks: %v\n", err)
+				continue
+			}
+
+			// Exit if no tasks and not in wait mode
+			if !hasMore && !w.config.WaitForTasks {
+				w.emptyPollCount++
+				// Wait for 2 consecutive empty polls to ensure no race conditions
+				if w.emptyPollCount >= 2 {
+					fmt.Println("No more tasks to process. Exiting...")
+					return w.shutdown(ctx)
+				}
+			} else {
+				w.emptyPollCount = 0
 			}
 		}
 	}
@@ -325,9 +350,24 @@ func (w *TaskWorker) loadTasks() error {
 	return nil
 }
 
-func (w *TaskWorker) processTasks(ctx context.Context) error {
+func (w *TaskWorker) processTasks(ctx context.Context) (bool, error) {
 	// Get executable tasks
 	readyTasks := w.dependencyGraph.GetReadyTasks()
+
+	// Check if there are any tasks (ready or waiting)
+	tasks, err := w.storage.ListTasks()
+	if err != nil {
+		return false, fmt.Errorf("failed to list tasks: %w", err)
+	}
+
+	// Count pending/waiting tasks
+	hasPendingTasks := false
+	for _, task := range tasks {
+		if task.Status == claude.StatusPending || task.Status == claude.StatusWaiting {
+			hasPendingTasks = true
+			break
+		}
+	}
 
 	for _, task := range readyTasks {
 		// Check if we can acquire a resource slot
@@ -345,7 +385,9 @@ func (w *TaskWorker) processTasks(ctx context.Context) error {
 		go w.executeTask(ctx, task, slot)
 	}
 
-	return nil
+	// Return true if there are any pending/waiting tasks or running tasks
+	stats := w.resourceMgr.GetStats()
+	return hasPendingTasks || stats.TotalActive > 0, nil
 }
 
 func (w *TaskWorker) executeTask(ctx context.Context, task *claude.Task, slot *claude.Slot) {
