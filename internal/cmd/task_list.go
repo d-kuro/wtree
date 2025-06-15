@@ -7,7 +7,6 @@ import (
 
 	"github.com/d-kuro/gwq/internal/claude"
 	"github.com/d-kuro/gwq/internal/claude/presenters"
-	"github.com/d-kuro/gwq/internal/claude/services"
 	"github.com/d-kuro/gwq/internal/config"
 	"github.com/d-kuro/gwq/internal/table"
 	"github.com/spf13/cobra"
@@ -69,8 +68,8 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to initialize storage: %w", err)
 	}
 
-	// Create services
-	taskService := services.NewTaskService(storage)
+	// Create simplified task manager (no service layer)
+	taskManager := claude.NewTaskManager(storage, cfg)
 	presenter := presenters.NewTaskPresenter()
 
 	// Load tasks
@@ -80,21 +79,21 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 	}
 
 	// Apply filters
-	tasks = applyTaskListFilters(tasks, taskService)
+	tasks = applyTaskListFilters(tasks, taskManager)
 
 	// Output tasks based on format
 	return outputTaskList(tasks, presenter)
 }
 
-func applyTaskListFilters(tasks []*claude.Task, taskService *services.TaskService) []*claude.Task {
+func applyTaskListFilters(tasks []*claude.Task, taskManager *claude.TaskManager) []*claude.Task {
 	// Apply status filter
 	if taskListFilter != "" {
-		tasks = taskService.FilterTasksByStatus(tasks, taskListFilter)
+		tasks = taskManager.FilterTasksByStatus(tasks, taskListFilter)
 	}
 
 	// Apply priority filter
 	if taskListPriorityMin > 0 {
-		tasks = taskService.FilterTasksByPriority(tasks, taskListPriorityMin)
+		tasks = taskManager.FilterTasksByPriority(tasks, taskListPriorityMin)
 	}
 
 	return tasks

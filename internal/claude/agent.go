@@ -179,7 +179,6 @@ func (ca *ClaudeAgent) buildClaudeCommand(task *Task) string {
 	}
 
 	// Add any additional configured arguments (only supported Claude options)
-	args = append(args, ca.config.AdditionalArgs...)
 
 	// Build comprehensive task prompt
 	prompt := ca.buildTaskPrompt(task)

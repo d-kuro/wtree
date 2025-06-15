@@ -47,7 +47,7 @@ type ExecutionMetadata struct {
 	Timeout          time.Duration   `json:"timeout"`
 }
 
-// ExecutionManager manages headless Claude executions
+// ExecutionManager manages Claude executions
 type ExecutionManager struct {
 	config     *models.ClaudeConfig
 	sessionMgr *tmux.SessionManager
@@ -84,10 +84,10 @@ func NewExecutionManager(config *models.ClaudeConfig) (*ExecutionManager, error)
 	}, nil
 }
 
-// Execute starts a headless Claude execution
+// Execute starts a Claude execution
 func (em *ExecutionManager) Execute(ctx context.Context, metadata *ExecutionMetadata) (*tmux.Session, error) {
 	// Auto cleanup old logs if enabled
-	if em.config.Headless.AutoCleanup && em.config.Headless.LogRetentionDays > 0 {
+	if em.config.Execution.AutoCleanup {
 		go func() {
 			if err := em.autoCleanupLogs(); err != nil {
 				fmt.Printf("Warning: auto cleanup failed: %v\n", err)
@@ -147,7 +147,7 @@ func (em *ExecutionManager) Execute(ctx context.Context, metadata *ExecutionMeta
 			"prompt":       truncateString(metadata.Prompt, 100),
 			"repository":   metadata.Repository,
 			"priority":     metadata.Priority,
-			"type":         "headless",
+			"type":         "task",
 		},
 	}
 
@@ -177,7 +177,7 @@ func (em *ExecutionManager) buildClaudeCommand(prompt string) string {
 	escapedPrompt = strings.ReplaceAll(escapedPrompt, `$`, `\$`)
 	escapedPrompt = strings.ReplaceAll(escapedPrompt, "`", "\\`")
 
-	// Build command with required flags for headless execution
+	// Build command with required flags for execution
 	args := []string{
 		em.config.Executable,
 		"--verbose",
@@ -525,12 +525,9 @@ func (em *ExecutionManager) GetLogDir() string {
 
 // autoCleanupLogs automatically cleans up old log files based on retention policy
 func (em *ExecutionManager) autoCleanupLogs() error {
-	retentionDays := em.config.Headless.LogRetentionDays
-	if retentionDays <= 0 {
-		return nil // No cleanup needed
-	}
-
-	cutoff := time.Now().AddDate(0, 0, -retentionDays)
+	// Use default retention of 30 days
+	const defaultRetentionDays = 30
+	cutoff := time.Now().AddDate(0, 0, -defaultRetentionDays)
 
 	// Clean up execution logs
 	executionsDir := filepath.Join(em.logDir, "executions")
@@ -564,22 +561,7 @@ func (em *ExecutionManager) cleanupExecutionLogs(executionsDir string, cutoff ti
 	deletedCount := 0
 	for _, entry := range entries {
 		if entry.IsDir() {
-			// Handle old date-based directory structure for backward compatibility
-			dirDate, err := time.Parse("2006-01-02", entry.Name())
-			if err != nil {
-				continue // Skip non-date directories
-			}
-
-			if dirDate.Before(cutoff) {
-				dirPath := filepath.Join(executionsDir, entry.Name())
-				if err := os.RemoveAll(dirPath); err != nil {
-					fmt.Printf("Warning: failed to remove old log directory %s: %v\n", dirPath, err)
-				} else {
-					fmt.Printf("Auto cleanup: removed old log directory %s\n", entry.Name())
-					deletedCount++
-				}
-			}
-			continue
+			continue // Skip directories
 		}
 
 		if !strings.HasSuffix(entry.Name(), ".jsonl") {
@@ -720,26 +702,18 @@ func ParseFileNameTimestamp(filename string) (time.Time, error) {
 
 // FindLogFileByExecutionID finds a log file by execution ID following the design specification:
 // Primary: Flat structure with timestamp-first naming (YYYYMMDD-HHMMSS-{type}-{id}.jsonl)
-// Fallback: Legacy formats for backward compatibility
+// Fallback: Legacy formats in flat structure
 func FindLogFileByExecutionID(logDir string, startTime time.Time, executionID string) string {
 	execLogDir := filepath.Join(logDir, "executions")
 
 	// 1. Try design-compliant timestamp-first format in flat structure
 	timestamp := startTime.Format("20060102-150405")
 
-	// Try different execution types based on execution ID patterns
-	typePatterns := []string{
-		fmt.Sprintf("%s-task-%s.jsonl", timestamp, executionID),     // Task execution
-		fmt.Sprintf("%s-review-%s.jsonl", timestamp, executionID),   // Review execution
-		fmt.Sprintf("%s-headless-%s.jsonl", timestamp, executionID), // Headless execution
-		fmt.Sprintf("%s-%s.jsonl", timestamp, executionID),          // Generic format
-	}
-
-	for _, pattern := range typePatterns {
-		filePath := filepath.Join(execLogDir, pattern)
-		if _, err := os.Stat(filePath); err == nil {
-			return filePath
-		}
+	// Try timestamp-first format
+	pattern := fmt.Sprintf("%s-%s.jsonl", timestamp, executionID)
+	filePath := filepath.Join(execLogDir, pattern)
+	if _, err := os.Stat(filePath); err == nil {
+		return filePath
 	}
 
 	// 2. Try to find any file in flat structure containing the execution ID
@@ -762,40 +736,6 @@ func FindLogFileByExecutionID(logDir string, startTime time.Time, executionID st
 		return oldPath
 	}
 
-	// 4. Legacy fallback: old date-based structure (for very old logs)
-	// Only check if the directory actually exists
-	dateDir := startTime.Format("2006-01-02")
-	dateDirPath := filepath.Join(execLogDir, dateDir)
-
-	if _, err := os.Stat(dateDirPath); err == nil {
-		// Try multiple file patterns in date subdirectory
-		legacyPatterns := []string{
-			fmt.Sprintf("%s.jsonl", executionID),          // Original execution ID
-			fmt.Sprintf("headless-%s.jsonl", executionID), // Headless prefix
-			fmt.Sprintf("task-%s.jsonl", executionID),     // Task prefix
-			fmt.Sprintf("review-%s.jsonl", executionID),   // Review prefix
-		}
-
-		for _, pattern := range legacyPatterns {
-			filePath := filepath.Join(dateDirPath, pattern)
-			if _, err := os.Stat(filePath); err == nil {
-				return filePath
-			}
-		}
-
-		// Final fallback: search in date directory
-		if entries, err := os.ReadDir(dateDirPath); err == nil {
-			for _, entry := range entries {
-				if !entry.IsDir() && strings.Contains(entry.Name(), executionID) && strings.HasSuffix(entry.Name(), ".jsonl") {
-					filePath := filepath.Join(dateDirPath, entry.Name())
-					// Verify the file actually exists before returning
-					if _, err := os.Stat(filePath); err == nil {
-						return filePath
-					}
-				}
-			}
-		}
-	}
 
 	// Return design-compliant path as default for new file creation
 	// This path will be used for new files but won't cause errors for missing files

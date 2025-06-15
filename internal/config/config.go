@@ -40,77 +40,25 @@ func Init() error {
 	viper.SetDefault("worktree.basedir", "~/worktrees")
 	viper.SetDefault("worktree.auto_mkdir", true)
 	viper.SetDefault("finder.preview", true)
-	viper.SetDefault("finder.preview_size", 3)
-	viper.SetDefault("finder.keybind_select", "enter")
-	viper.SetDefault("finder.keybind_cancel", "esc")
-	viper.SetDefault("naming.template", "{{.Host}}/{{.Owner}}/{{.Repository}}/{{.Branch}}")
-	viper.SetDefault("naming.sanitize_chars", map[string]string{
-		"/": "-",
-		":": "-",
-	})
 	viper.SetDefault("ui.icons", true)
 	viper.SetDefault("ui.tilde_home", true)
-	viper.SetDefault("tmux.enabled", true)
-	viper.SetDefault("tmux.auto_create_session", true)
-	viper.SetDefault("tmux.detach_on_create", true)
-	viper.SetDefault("tmux.auto_cleanup_completed", false)
-	viper.SetDefault("tmux.tmux_command", "tmux")
-	viper.SetDefault("tmux.default_shell", "/bin/bash")
-	viper.SetDefault("tmux.session_timeout", "24h")
-	viper.SetDefault("tmux.keep_alive", true)
-	viper.SetDefault("tmux.history_limit", 50000)
-	viper.SetDefault("tmux.history_auto_save", true)
-	viper.SetDefault("tmux.history_save_dir", "~/.gwq/history")
 
 	// Claude defaults
 	viper.SetDefault("claude.executable", "claude")
-	viper.SetDefault("claude.skip_permissions", true)
-	viper.SetDefault("claude.timeout", "2h")
-	viper.SetDefault("claude.max_iterations", 3)
 	viper.SetDefault("claude.config_dir", "~/.config/gwq/claude")
-	viper.SetDefault("claude.additional_args", []string{})
 	viper.SetDefault("claude.max_parallel", 3)
 	viper.SetDefault("claude.max_development_tasks", 2)
-	viper.SetDefault("claude.max_review_tasks", 1)
-	viper.SetDefault("claude.max_cpu_percent", 80)
-	viper.SetDefault("claude.max_memory_mb", 4096)
-	viper.SetDefault("claude.task_timeout", "2h")
 
 	// Claude queue defaults
-	viper.SetDefault("claude.queue.max_queue_size", 50)
 	viper.SetDefault("claude.queue.queue_dir", "~/.config/gwq/claude/queue")
-	viper.SetDefault("claude.queue.priority_boost_after", "1h")
-	viper.SetDefault("claude.queue.starvation_prevention", true)
-	viper.SetDefault("claude.queue.dependency_timeout", "30m")
-	viper.SetDefault("claude.queue.max_dependency_depth", 5)
-	viper.SetDefault("claude.queue.validate_dependencies", true)
-	viper.SetDefault("claude.queue.validate_task_files", true)
-	viper.SetDefault("claude.queue.required_fields", []string{"objectives", "instructions", "verification_commands"})
 
 	// Claude worktree defaults
 	viper.SetDefault("claude.worktree.auto_create_worktree", true)
 	viper.SetDefault("claude.worktree.require_existing_worktree", false)
 	viper.SetDefault("claude.worktree.validate_branch_exists", true)
 
-	// Claude review defaults
-	viper.SetDefault("claude.review.enabled", true)
-	viper.SetDefault("claude.review.review_patterns", []string{"*.go", "*.js", "*.ts", "*.py"})
-	viper.SetDefault("claude.review.exclude_patterns", []string{"*_test.go", "vendor/*"})
-	viper.SetDefault("claude.review.review_prompt", "Please review the code changes focusing on security, bugs, performance, and readability.")
-	viper.SetDefault("claude.review.auto_fix", true)
-	viper.SetDefault("claude.review.max_fix_attempts", 2)
-
-	// Claude headless execution defaults
-	viper.SetDefault("claude.headless.log_retention_days", 30)
-	viper.SetDefault("claude.headless.max_log_size_mb", 100)
-	viper.SetDefault("claude.headless.auto_cleanup", true)
-	viper.SetDefault("claude.headless.fuzzy_finder", "fzf")
-
-	// Claude headless formatting defaults
-	viper.SetDefault("claude.headless.formatting.show_tool_details", true)
-	viper.SetDefault("claude.headless.formatting.show_cost_breakdown", true)
-	viper.SetDefault("claude.headless.formatting.show_timing_info", true)
-	viper.SetDefault("claude.headless.formatting.max_content_length", 1000)
+	// Claude execution defaults
+	viper.SetDefault("claude.execution.auto_cleanup", true)
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {

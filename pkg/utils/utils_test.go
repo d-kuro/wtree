@@ -112,3 +112,27 @@ func TestTildePathWithDifferentSeparators(t *testing.T) {
 		})
 	}
 }
+
+func TestSanitizeForFilesystem(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"feature/test", "feature-test"},
+		{"bugfix:issue-123", "bugfix-issue-123"},
+		{"feature\\windows", "feature-windows"}, // backslashes are replaced
+		{"feat*ure", "feat-ure"},                // asterisks are replaced
+		{"normal-branch", "normal-branch"},
+		{"multiple//slashes", "multiple--slashes"},
+		{"complex?path\"with<bad>chars|", "complex-path-with-bad-chars-"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			result := SanitizeForFilesystem(tt.input)
+			if result != tt.expected {
+				t.Errorf("SanitizeForFilesystem(%s) = %s, want %s", tt.input, result, tt.expected)
+			}
+		})
+	}
+}

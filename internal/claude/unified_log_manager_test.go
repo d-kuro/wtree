@@ -109,11 +109,11 @@ func TestSaveExecution(t *testing.T) {
 	}
 
 	execution := &UnifiedExecution{
-		ExecutionID:   "review-456",
-		ExecutionType: ExecutionTypeReview,
+		ExecutionID:   "task-456",
+		ExecutionType: ExecutionTypeTask,
 		StartTime:     time.Now(),
 		Status:        ExecutionStatusCompleted,
-		Prompt:        "Review this code",
+		Prompt:        "Process this task",
 		Repository:    "test-repo",
 	}
 
@@ -163,8 +163,8 @@ func TestLoadExecution(t *testing.T) {
 
 	// Create and save an execution
 	original := &UnifiedExecution{
-		ExecutionID:   "headless-789",
-		ExecutionType: ExecutionTypeHeadless,
+		ExecutionID:   "task-789",
+		ExecutionType: ExecutionTypeTask,
 		StartTime:     time.Now(),
 		Status:        ExecutionStatusRunning,
 		Prompt:        "Test prompt",
@@ -178,7 +178,7 @@ func TestLoadExecution(t *testing.T) {
 	}
 
 	// Load it back
-	loaded, err := ulm.LoadExecution("headless-789")
+	loaded, err := ulm.LoadExecution("task-789")
 	if err != nil {
 		t.Fatalf("LoadExecution() failed: %v", err)
 	}
@@ -234,14 +234,14 @@ func TestListExecutions(t *testing.T) {
 			Status:        ExecutionStatusCompleted,
 		},
 		{
-			ExecutionID:   "review-002",
-			ExecutionType: ExecutionTypeReview,
+			ExecutionID:   "task-002",
+			ExecutionType: ExecutionTypeTask,
 			StartTime:     time.Now().Add(-1 * time.Hour),
 			Status:        ExecutionStatusFailed,
 		},
 		{
-			ExecutionID:   "headless-003",
-			ExecutionType: ExecutionTypeHeadless,
+			ExecutionID:   "task-003",
+			ExecutionType: ExecutionTypeTask,
 			StartTime:     time.Now(),
 			Status:        ExecutionStatusRunning,
 		},
@@ -264,7 +264,7 @@ func TestListExecutions(t *testing.T) {
 	}
 
 	// Verify sort order (newest first)
-	if listed[0].ExecutionID != "headless-003" {
+	if listed[0].ExecutionID != "task-003" {
 		t.Errorf("Expected newest execution first, got %s", listed[0].ExecutionID)
 	}
 }
@@ -295,8 +295,8 @@ func TestListExecutionsWithFilters(t *testing.T) {
 			Status:        ExecutionStatusRunning,
 		},
 		{
-			ExecutionID:   "review-003",
-			ExecutionType: ExecutionTypeReview,
+			ExecutionID:   "task-003",
+			ExecutionType: ExecutionTypeTask,
 			StartTime:     time.Now(),
 			Status:        ExecutionStatusCompleted,
 		},
@@ -318,8 +318,8 @@ func TestListExecutionsWithFilters(t *testing.T) {
 		t.Fatalf("ListExecutions() with filter failed: %v", err)
 	}
 
-	if len(taskExecutions) != 2 {
-		t.Errorf("Expected 2 task executions, got %d", len(taskExecutions))
+	if len(taskExecutions) != 3 {
+		t.Errorf("Expected 3 task executions, got %d", len(taskExecutions))
 	}
 
 	// Test status filter
@@ -342,8 +342,8 @@ func TestListExecutionsWithFilters(t *testing.T) {
 		t.Fatalf("ListExecutions() with multiple filters failed: %v", err)
 	}
 
-	if len(taskCompletedExecutions) != 1 {
-		t.Errorf("Expected 1 completed task execution, got %d", len(taskCompletedExecutions))
+	if len(taskCompletedExecutions) != 2 {
+		t.Errorf("Expected 2 completed task executions, got %d", len(taskCompletedExecutions))
 	}
 }
 

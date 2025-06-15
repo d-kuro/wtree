@@ -130,12 +130,8 @@ func (cce *ClaudeCodeExecutor) Execute(ctx context.Context, execution *UnifiedEx
 func (cce *ClaudeCodeExecutor) buildClaudeCommand(execution *UnifiedExecution) string {
 	args := []string{cce.config.Executable}
 
-	switch execution.ExecutionType {
-	case ExecutionTypeHeadless:
-		args = append(args, "--verbose", "--dangerously-skip-permissions", "--output-format", "stream-json")
-	case ExecutionTypeTask, ExecutionTypeReview:
-		args = append(args, "--dangerously-skip-permissions", "--output-format", "stream-json")
-	}
+	// Add standard arguments for task execution
+	args = append(args, "--dangerously-skip-permissions", "--output-format", "stream-json")
 
 	// Add the prompt
 	args = append(args, "-p", fmt.Sprintf(`"%s"`, escapeForShell(execution.Prompt)))

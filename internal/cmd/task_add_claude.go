@@ -5,7 +5,6 @@ import (
 
 	"github.com/d-kuro/gwq/internal/claude"
 	"github.com/d-kuro/gwq/internal/claude/presenters"
-	"github.com/d-kuro/gwq/internal/claude/services"
 	"github.com/d-kuro/gwq/internal/config"
 	"github.com/spf13/cobra"
 )
@@ -52,7 +51,6 @@ var (
 	taskAddClaudePrompt       string
 	taskAddClaudeFilesToFocus []string
 	taskAddClaudeVerify       []string
-	taskAddClaudeAutoReview   bool
 	taskAddClaudeAutoCommit   bool
 	taskAddClaudeFile         string
 )
@@ -68,7 +66,6 @@ func init() {
 	taskAddClaudeCmd.Flags().StringVar(&taskAddClaudePrompt, "prompt", "", "Complete task prompt for Claude")
 	taskAddClaudeCmd.Flags().StringSliceVar(&taskAddClaudeFilesToFocus, "files", nil, "Key files to focus on")
 	taskAddClaudeCmd.Flags().StringSliceVar(&taskAddClaudeVerify, "verify", nil, "Commands to verify task completion")
-	taskAddClaudeCmd.Flags().BoolVar(&taskAddClaudeAutoReview, "auto-review", true, "Enable automatic code review")
 	taskAddClaudeCmd.Flags().BoolVar(&taskAddClaudeAutoCommit, "auto-commit", false, "Enable automatic commits")
 	taskAddClaudeCmd.Flags().StringVarP(&taskAddClaudeFile, "file", "f", "", "Load tasks from YAML file")
 }
@@ -82,13 +79,13 @@ func runTaskAddClaude(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to initialize storage: %w", err)
 	}
 
-	// Create services
-	taskService := services.NewTaskService(storage)
+	// Create simplified task manager (no service layer)
+	taskManager := claude.NewTaskManager(storage, cfg)
 	presenter := presenters.NewTaskPresenter()
 
 	// Handle file-based task creation
 	if taskAddClaudeFile != "" {
-		return handleTaskAddClaudeFileCreation(taskService, presenter)
+		return handleTaskAddClaudeFileCreation(taskManager, presenter)
 	}
 
 	// Validate that NAME argument is provided for single task creation
@@ -97,11 +94,11 @@ func runTaskAddClaude(cmd *cobra.Command, args []string) error {
 	}
 
 	// Handle single task creation
-	return handleTaskAddClaudeSingleTaskCreation(args[0], taskService, presenter)
+	return handleTaskAddClaudeSingleTaskCreation(args[0], taskManager, presenter)
 }
 
-func handleTaskAddClaudeFileCreation(taskService *services.TaskService, presenter *presenters.TaskPresenter) error {
-	tasks, err := taskService.CreateTasksFromFile(taskAddClaudeFile)
+func handleTaskAddClaudeFileCreation(taskManager *claude.TaskManager, presenter *presenters.TaskPresenter) error {
+	tasks, err := taskManager.CreateTasksFromFile(taskAddClaudeFile)
 	if err != nil {
 		return err
 	}
@@ -110,14 +107,14 @@ func handleTaskAddClaudeFileCreation(taskService *services.TaskService, presente
 	return nil
 }
 
-func handleTaskAddClaudeSingleTaskCreation(name string, taskService *services.TaskService, presenter *presenters.TaskPresenter) error {
+func handleTaskAddClaudeSingleTaskCreation(name string, taskManager *claude.TaskManager, presenter *presenters.TaskPresenter) error {
 	// Validate required flags
 	if err := validateTaskAddClaudeFlags(); err != nil {
 		return err
 	}
 
 	// Create task request
-	req := &services.CreateTaskRequest{
+	req := &claude.CreateTaskRequest{
 		Name:                 name,
 		Worktree:             taskAddClaudeWorktree,
 		BaseBranch:           taskAddClaudeBaseBranch,
@@ -126,12 +123,11 @@ func handleTaskAddClaudeSingleTaskCreation(name string, taskService *services.Ta
 		Prompt:               taskAddClaudePrompt,
 		FilesToFocus:         taskAddClaudeFilesToFocus,
 		VerificationCommands: taskAddClaudeVerify,
-		AutoReview:           taskAddClaudeAutoReview,
 		AutoCommit:           taskAddClaudeAutoCommit,
 	}
 
 	// Create task
-	task, err := taskService.CreateTask(req)
+	task, err := taskManager.CreateTask(req)
 	if err != nil {
 		return err
 	}
