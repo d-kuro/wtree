@@ -56,10 +56,6 @@ func TestInit(t *testing.T) {
 	if !viper.GetBool("finder.preview") {
 		t.Errorf("Default finder.preview should be true")
 	}
-	// finder.preview_size field removed
-	// finder.keybind_select field removed
-	// finder.keybind_cancel field removed
-	// naming.template field removed
 	if !viper.GetBool("ui.icons") {
 		t.Errorf("Default ui.icons should be true")
 	}
@@ -79,8 +75,6 @@ func TestLoad(t *testing.T) {
 	viper.Set("worktree.basedir", "~/test-worktrees")
 	viper.Set("worktree.auto_mkdir", false)
 	viper.Set("finder.preview", false)
-	// removed references to deleted fields: preview_size, keybind_select, keybind_cancel, template
-	// naming.sanitize_chars removed
 	viper.Set("ui.icons", false)
 
 	cfg, err := Load()
@@ -95,10 +89,6 @@ func TestLoad(t *testing.T) {
 	if cfg.Finder.Preview {
 		t.Errorf("FinderConfig.Preview = %v, want false", cfg.Finder.Preview)
 	}
-	// cfg.Finder.PreviewSize field removed
-	// cfg.Finder.KeybindSelect field removed
-	// cfg.Finder.KeybindCancel field removed
-	// cfg.Naming.Template field removed
 	if cfg.UI.Icons {
 		t.Errorf("UIConfig.Icons = %v, want false", cfg.UI.Icons)
 	}
@@ -211,8 +201,7 @@ func TestConfigStructureIntegrity(t *testing.T) {
 		},
 		Finder: models.FinderConfig{
 			Preview: true,
-			// removed deleted fields: PreviewSize, KeybindSelect, KeybindCancel
-		},
+			},
 		UI: models.UIConfig{
 			Icons: false,
 		},
@@ -223,8 +212,6 @@ func TestConfigStructureIntegrity(t *testing.T) {
 	viper.Set("worktree.basedir", cfg.Worktree.BaseDir)
 	viper.Set("worktree.auto_mkdir", cfg.Worktree.AutoMkdir)
 	viper.Set("finder.preview", cfg.Finder.Preview)
-	// removed viper.Set calls for deleted fields: preview_size, keybind_select, keybind_cancel, template
-	// naming.sanitize_chars removed
 	viper.Set("ui.icons", cfg.UI.Icons)
 
 	// Load and verify
@@ -243,10 +230,6 @@ func TestConfigStructureIntegrity(t *testing.T) {
 	if loaded.Finder.Preview != cfg.Finder.Preview {
 		t.Errorf("Finder.Preview mismatch")
 	}
-	// loaded.Finder.PreviewSize field removed
-	// loaded.Finder.KeybindSelect field removed
-	// loaded.Finder.KeybindCancel field removed
-	// loaded.Naming.Template field removed
 	if loaded.UI.Icons != cfg.UI.Icons {
 		t.Errorf("UI.Icons mismatch")
 	}

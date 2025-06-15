@@ -104,7 +104,6 @@ func TestConfigDefaults(t *testing.T) {
 		},
 		Finder: FinderConfig{
 			Preview: true,
-			// removed deleted fields: PreviewSize, KeybindSelect, KeybindCancel
 		},
 		UI: UIConfig{
 			Icons: true,
@@ -121,11 +120,6 @@ func TestConfigDefaults(t *testing.T) {
 	if !cfg.Finder.Preview {
 		t.Error("Default Preview should be true")
 	}
-	// cfg.Finder.PreviewSize field removed
-	// cfg.Finder.KeybindSelect field removed
-	// cfg.Finder.KeybindCancel field removed
-	// cfg.Naming.Template field removed
-	// Naming field removed, no longer testing SanitizeChars
 	if !cfg.UI.Icons {
 		t.Error("Default Icons should be true")
 	}
