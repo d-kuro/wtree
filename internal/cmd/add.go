@@ -3,11 +3,6 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/d-kuro/gwq/internal/config"
-	"github.com/d-kuro/gwq/internal/finder"
-	"github.com/d-kuro/gwq/internal/git"
-	"github.com/d-kuro/gwq/internal/ui"
-	"github.com/d-kuro/gwq/internal/worktree"
 	"github.com/spf13/cobra"
 )
 
@@ -49,63 +44,51 @@ func init() {
 }
 
 func runAdd(cmd *cobra.Command, args []string) error {
-	cfg, err := config.Load()
-	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
-	}
+	return ExecuteWithArgs(true, func(ctx *CommandContext, cmd *cobra.Command, args []string) error {
+		var branch string
+		var path string
 
-	g, err := git.NewFromCwd()
-	if err != nil {
-		return fmt.Errorf("failed to initialize git: %w", err)
-	}
+		if addInteractive {
+			if len(args) > 0 {
+				return fmt.Errorf("cannot specify branch name with -i flag")
+			}
 
-	printer := ui.New(&cfg.UI)
-	wm := worktree.New(g, cfg)
+			branches, err := ctx.Git.ListBranches(true)
+			if err != nil {
+				return fmt.Errorf("failed to list branches: %w", err)
+			}
 
-	var branch string
-	var path string
+			selectedBranch, err := ctx.GetFinder().SelectBranch(branches)
+			if err != nil {
+				return fmt.Errorf("branch selection cancelled")
+			}
 
-	if addInteractive {
-		if len(args) > 0 {
-			return fmt.Errorf("cannot specify branch name with -i flag")
+			branch = selectedBranch.Name
+			if selectedBranch.IsRemote {
+				branch = selectedBranch.Name[len("origin/"):]
+				addBranch = true
+			}
+		} else {
+			if len(args) < 1 {
+				return fmt.Errorf("branch name is required")
+			}
+			branch = args[0]
+			if len(args) > 1 {
+				path = args[1]
+			}
 		}
 
-		branches, err := g.ListBranches(true)
-		if err != nil {
-			return fmt.Errorf("failed to list branches: %w", err)
+		if path != "" && !addForce {
+			if err := ctx.WorktreeManager.ValidateWorktreePath(path); err != nil {
+				return err
+			}
 		}
 
-		f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
-		selectedBranch, err := f.SelectBranch(branches)
-		if err != nil {
-			return fmt.Errorf("branch selection cancelled")
-		}
-
-		branch = selectedBranch.Name
-		if selectedBranch.IsRemote {
-			branch = selectedBranch.Name[len("origin/"):]
-			addBranch = true
-		}
-	} else {
-		if len(args) < 1 {
-			return fmt.Errorf("branch name is required")
-		}
-		branch = args[0]
-		if len(args) > 1 {
-			path = args[1]
-		}
-	}
-
-	if path != "" && !addForce {
-		if err := wm.ValidateWorktreePath(path); err != nil {
+		if err := ctx.WorktreeManager.Add(branch, path, addBranch); err != nil {
 			return err
 		}
-	}
 
-	if err := wm.Add(branch, path, addBranch); err != nil {
-		return err
-	}
-
-	printer.PrintSuccess(fmt.Sprintf("Created worktree for branch '%s'", branch))
-	return nil
+		ctx.Printer.PrintSuccess(fmt.Sprintf("Created worktree for branch '%s'", branch))
+		return nil
+	})(cmd, args)
 }
