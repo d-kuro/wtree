@@ -26,3 +26,6 @@ go.work.sum
 # Added by goreleaser init:
 dist/
 gwq
+
+# Claude Code
+.claude/todos/
