@@ -3,10 +3,6 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/d-kuro/gwq/internal/config"
-	"github.com/d-kuro/gwq/internal/git"
-	"github.com/d-kuro/gwq/internal/ui"
-	"github.com/d-kuro/gwq/internal/worktree"
 	"github.com/spf13/cobra"
 )
 
@@ -28,23 +24,12 @@ func init() {
 }
 
 func runPrune(cmd *cobra.Command, args []string) error {
-	cfg, err := config.Load()
-	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
-	}
+	return ExecuteWithContext(true, func(ctx *CommandContext) error {
+		if err := ctx.WorktreeManager.Prune(); err != nil {
+			return fmt.Errorf("failed to prune worktrees: %w", err)
+		}
 
-	g, err := git.NewFromCwd()
-	if err != nil {
-		return fmt.Errorf("failed to initialize git: %w", err)
-	}
-
-	wm := worktree.New(g, cfg)
-	printer := ui.New(&cfg.UI)
-
-	if err := wm.Prune(); err != nil {
-		return fmt.Errorf("failed to prune worktrees: %w", err)
-	}
-
-	printer.PrintSuccess("Pruned stale worktree information")
-	return nil
+		ctx.Printer.PrintSuccess("Pruned stale worktree information")
+		return nil
+	})(cmd, args)
 }

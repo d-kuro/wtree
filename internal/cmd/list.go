@@ -3,12 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/d-kuro/gwq/internal/config"
 	"github.com/d-kuro/gwq/internal/discovery"
-	"github.com/d-kuro/gwq/internal/git"
-	"github.com/d-kuro/gwq/internal/ui"
-	"github.com/d-kuro/gwq/internal/worktree"
-	"github.com/d-kuro/gwq/pkg/models"
 	"github.com/spf13/cobra"
 )
 
@@ -52,43 +47,47 @@ func init() {
 }
 
 func runList(cmd *cobra.Command, args []string) error {
-	cfg, err := config.Load()
+	// Try git context first, fall back to non-git if needed
+	ctx, err := NewGitCommandContext()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		// If git initialization fails, create non-git context for global mode
+		ctx, err = NewCommandContext()
+		if err != nil {
+			return err
+		}
 	}
 
-	printer := ui.New(&cfg.UI)
+	return ctx.WithGlobalLocalSupport(
+		listGlobal,
+		func(ctx *CommandContext) error {
+			// Local mode - show worktrees from current repository
+			worktrees, err := ctx.WorktreeManager.List()
+			if err != nil {
+				return fmt.Errorf("failed to list worktrees: %w", err)
+			}
 
-	// Check if we're in a git repository
-	g, err := git.NewFromCwd()
-	if err != nil || listGlobal {
-		// Not in a git repo or global flag set - show all worktrees from base directory
-		return showGlobalWorktrees(cfg, printer)
-	}
+			if listJSON {
+				return ctx.Printer.PrintWorktreesJSON(worktrees)
+			}
 
-	// In a git repo - show local worktrees
-	wm := worktree.New(g, cfg)
-	worktrees, err := wm.List()
-	if err != nil {
-		return fmt.Errorf("failed to list worktrees: %w", err)
-	}
-
-	if listJSON {
-		return printer.PrintWorktreesJSON(worktrees)
-	}
-
-	printer.PrintWorktrees(worktrees, listVerbose)
-	return nil
+			ctx.Printer.PrintWorktrees(worktrees, listVerbose)
+			return nil
+		},
+		func(ctx *CommandContext) error {
+			// Global mode - show all worktrees from base directory
+			return showGlobalWorktrees(ctx)
+		},
+	)
 }
 
-func showGlobalWorktrees(cfg *models.Config, printer *ui.Printer) error {
-	entries, err := discovery.DiscoverGlobalWorktrees(cfg.Worktree.BaseDir)
+func showGlobalWorktrees(ctx *CommandContext) error {
+	entries, err := discovery.DiscoverGlobalWorktrees(ctx.Config.Worktree.BaseDir)
 	if err != nil {
 		return fmt.Errorf("failed to discover worktrees: %w", err)
 	}
 
 	if len(entries) == 0 {
-		printer.PrintInfo("No worktrees found in " + cfg.Worktree.BaseDir)
+		ctx.Printer.PrintInfo("No worktrees found in " + ctx.Config.Worktree.BaseDir)
 		return nil
 	}
 
@@ -96,9 +95,9 @@ func showGlobalWorktrees(cfg *models.Config, printer *ui.Printer) error {
 	worktrees := discovery.ConvertToWorktreeModels(entries, !listVerbose)
 
 	if listJSON {
-		return printer.PrintWorktreesJSON(worktrees)
+		return ctx.Printer.PrintWorktreesJSON(worktrees)
 	}
 
-	printer.PrintWorktrees(worktrees, listVerbose)
+	ctx.Printer.PrintWorktrees(worktrees, listVerbose)
 	return nil
 }

@@ -5,11 +5,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/d-kuro/gwq/internal/config"
 	"github.com/d-kuro/gwq/internal/discovery"
 	"github.com/d-kuro/gwq/internal/finder"
 	"github.com/d-kuro/gwq/internal/git"
-	"github.com/d-kuro/gwq/internal/ui"
 	"github.com/d-kuro/gwq/internal/worktree"
 	"github.com/d-kuro/gwq/pkg/models"
 	"github.com/spf13/cobra"
@@ -79,24 +77,27 @@ func init() {
 }
 
 func runRemove(cmd *cobra.Command, args []string) error {
-	cfg, err := config.Load()
-	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
-	}
+	return ExecuteWithArgs(false, func(ctx *CommandContext, cmd *cobra.Command, args []string) error {
+		// Try to get git context, but don't fail if we're not in a git repo
+		gitCtx, gitErr := NewGitCommandContext()
+		if gitErr == nil {
+			ctx = gitCtx
+		}
 
-	printer := ui.New(&cfg.UI)
+		return ctx.WithGlobalLocalSupport(
+			removeGlobal,
+			func(ctx *CommandContext) error {
+				return removeLocalWorktree(ctx, args)
+			},
+			func(ctx *CommandContext) error {
+				return removeGlobalWorktree(ctx, args)
+			},
+		)
+	})(cmd, args)
+}
 
-	// Check if we're in a git repository
-	g, err := git.NewFromCwd()
-	if err != nil || removeGlobal {
-		// Not in a git repo or global flag set - use global worktrees
-		return removeGlobalWorktree(cfg, printer, args)
-	}
-
-	// In a git repo - use local worktrees
-	wm := worktree.New(g, cfg)
-
-	worktrees, err := wm.List()
+func removeLocalWorktree(ctx *CommandContext, args []string) error {
+	worktrees, err := ctx.WorktreeManager.List()
 	if err != nil {
 		return fmt.Errorf("failed to list worktrees: %w", err)
 	}
@@ -110,7 +111,7 @@ func runRemove(cmd *cobra.Command, args []string) error {
 
 	if len(args) > 0 {
 		// Get all matching worktrees
-		matches, err := wm.GetMatchingWorktrees(args[0])
+		matches, err := ctx.WorktreeManager.GetMatchingWorktrees(args[0])
 		if err != nil {
 			return err
 		}
@@ -129,16 +130,14 @@ func runRemove(cmd *cobra.Command, args []string) error {
 			toRemove = nonMainMatches
 		} else {
 			// Multiple matches - use fuzzy finder
-			f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
-			selected, err := f.SelectMultipleWorktrees(nonMainMatches)
+			selected, err := ctx.GetFinder().SelectMultipleWorktrees(nonMainMatches)
 			if err != nil {
 				return fmt.Errorf("worktree selection cancelled")
 			}
 			toRemove = selected
 		}
 	} else {
-		f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
-		selected, err := f.SelectMultipleWorktrees(nonMainWorktrees)
+		selected, err := ctx.GetFinder().SelectMultipleWorktrees(nonMainWorktrees)
 		if err != nil {
 			return fmt.Errorf("worktree selection cancelled")
 		}
@@ -158,20 +157,20 @@ func runRemove(cmd *cobra.Command, args []string) error {
 
 	for _, wt := range toRemove {
 		if deleteBranch {
-			if err := wm.RemoveWithBranch(wt.Path, wt.Branch, removeForce, deleteBranch, forceDeleteBranch); err != nil {
-				printer.PrintError(fmt.Errorf("failed to remove %s: %v", wt.Branch, err))
+			if err := ctx.WorktreeManager.RemoveWithBranch(wt.Path, wt.Branch, removeForce, deleteBranch, forceDeleteBranch); err != nil {
+				ctx.Printer.PrintError(fmt.Errorf("failed to remove %s: %v", wt.Branch, err))
 				continue
 			}
-			printer.PrintSuccess(fmt.Sprintf("Removed worktree: %s", wt.Branch))
+			ctx.Printer.PrintSuccess(fmt.Sprintf("Removed worktree: %s", wt.Branch))
 			if wt.Branch != "" {
-				printer.PrintSuccess(fmt.Sprintf("Deleted branch: %s", wt.Branch))
+				ctx.Printer.PrintSuccess(fmt.Sprintf("Deleted branch: %s", wt.Branch))
 			}
 		} else {
-			if err := wm.Remove(wt.Path, removeForce); err != nil {
-				printer.PrintError(fmt.Errorf("failed to remove %s: %v", wt.Branch, err))
+			if err := ctx.WorktreeManager.Remove(wt.Path, removeForce); err != nil {
+				ctx.Printer.PrintError(fmt.Errorf("failed to remove %s: %v", wt.Branch, err))
 				continue
 			}
-			printer.PrintSuccess(fmt.Sprintf("Removed worktree: %s", wt.Branch))
+			ctx.Printer.PrintSuccess(fmt.Sprintf("Removed worktree: %s", wt.Branch))
 		}
 	}
 
@@ -188,14 +187,14 @@ func filterNonMainWorktrees(worktrees []models.Worktree) []models.Worktree {
 	return filtered
 }
 
-func removeGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []string) error {
-	entries, err := discovery.DiscoverGlobalWorktrees(cfg.Worktree.BaseDir)
+func removeGlobalWorktree(ctx *CommandContext, args []string) error {
+	entries, err := discovery.DiscoverGlobalWorktrees(ctx.Config.Worktree.BaseDir)
 	if err != nil {
 		return fmt.Errorf("failed to discover worktrees: %w", err)
 	}
 
 	if len(entries) == 0 {
-		return fmt.Errorf("no worktrees found in %s", cfg.Worktree.BaseDir)
+		return fmt.Errorf("no worktrees found in %s", ctx.Config.Worktree.BaseDir)
 	}
 
 	// Filter out main worktrees
@@ -247,7 +246,7 @@ func removeGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []string
 				g = &git.Git{}
 			}
 
-			f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
+			f := finder.NewWithUI(g, &ctx.Config.Finder, &ctx.Config.UI)
 			selected, err := f.SelectMultipleWorktrees(worktrees)
 			if err != nil {
 				return fmt.Errorf("worktree selection cancelled")
@@ -275,7 +274,7 @@ func removeGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []string
 			g = &git.Git{}
 		}
 
-		f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
+		f := finder.NewWithUI(g, &ctx.Config.Finder, &ctx.Config.UI)
 		selected, err := f.SelectMultipleWorktrees(worktrees)
 		if err != nil {
 			return fmt.Errorf("worktree selection cancelled")
@@ -314,7 +313,7 @@ func removeGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []string
 		// Change to the repository directory to run git commands
 		originalDir, err := os.Getwd()
 		if err != nil {
-			printer.PrintError(fmt.Errorf("failed to get current directory: %v", err))
+			ctx.Printer.PrintError(fmt.Errorf("failed to get current directory: %v", err))
 			continue
 		}
 
@@ -329,13 +328,13 @@ func removeGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []string
 		}
 
 		if err := os.Chdir(repoPath); err != nil {
-			printer.PrintError(fmt.Errorf("failed to change to repository %s: %v", repoPath, err))
+			ctx.Printer.PrintError(fmt.Errorf("failed to change to repository %s: %v", repoPath, err))
 			continue
 		}
 
 		// Create git instance for the repository
 		g := git.New(repoPath)
-		wm := worktree.New(g, cfg)
+		wm := worktree.New(g, ctx.Config)
 
 		if deleteBranch {
 			if err := wm.RemoveWithBranch(entry.Path, entry.Branch, removeForce, deleteBranch, forceDeleteBranch); err != nil {
@@ -343,7 +342,7 @@ func removeGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []string
 				if entry.RepositoryInfo != nil {
 					repoName = entry.RepositoryInfo.Repository
 				}
-				printer.PrintError(fmt.Errorf("failed to remove %s:%s: %v", repoName, entry.Branch, err))
+				ctx.Printer.PrintError(fmt.Errorf("failed to remove %s:%s: %v", repoName, entry.Branch, err))
 				_ = os.Chdir(originalDir)
 				continue
 			}
@@ -353,7 +352,7 @@ func removeGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []string
 				if entry.RepositoryInfo != nil {
 					repoName = entry.RepositoryInfo.Repository
 				}
-				printer.PrintError(fmt.Errorf("failed to remove %s:%s: %v", repoName, entry.Branch, err))
+				ctx.Printer.PrintError(fmt.Errorf("failed to remove %s:%s: %v", repoName, entry.Branch, err))
 				_ = os.Chdir(originalDir)
 				continue
 			}
@@ -363,9 +362,9 @@ func removeGlobalWorktree(cfg *models.Config, printer *ui.Printer, args []string
 		if entry.RepositoryInfo != nil {
 			repoName = entry.RepositoryInfo.Repository
 		}
-		printer.PrintSuccess(fmt.Sprintf("Removed worktree: %s:%s", repoName, entry.Branch))
+		ctx.Printer.PrintSuccess(fmt.Sprintf("Removed worktree: %s:%s", repoName, entry.Branch))
 		if deleteBranch && entry.Branch != "" {
-			printer.PrintSuccess(fmt.Sprintf("Deleted branch: %s", entry.Branch))
+			ctx.Printer.PrintSuccess(fmt.Sprintf("Deleted branch: %s", entry.Branch))
 		}
 
 		// Change back to original directory
