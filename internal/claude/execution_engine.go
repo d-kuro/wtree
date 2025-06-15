@@ -3,7 +3,6 @@ package claude
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/d-kuro/gwq/pkg/models"
@@ -311,37 +310,8 @@ func (ee *ExecutionEngine) generateSessionID() string {
 
 // buildTaskPrompt builds a comprehensive prompt for tasks
 func (ee *ExecutionEngine) buildTaskPrompt(task *Task) string {
-	var prompt strings.Builder
-
-	prompt.WriteString(fmt.Sprintf("# Task: %s\n\n", task.Name))
-
 	if task.Prompt != "" {
-		prompt.WriteString(fmt.Sprintf("%s\n\n", task.Prompt))
+		return task.Prompt
 	}
-
-	if len(task.FilesToFocus) > 0 {
-		prompt.WriteString("## Files to Focus On\n")
-		for _, file := range task.FilesToFocus {
-			prompt.WriteString(fmt.Sprintf("- %s\n", file))
-		}
-		prompt.WriteString("\n")
-	}
-
-	if len(task.VerificationCommands) > 0 {
-		prompt.WriteString("## Verification Commands\n")
-		prompt.WriteString("Please run these commands to verify your work:\n")
-		for _, cmd := range task.VerificationCommands {
-			prompt.WriteString(fmt.Sprintf("- `%s`\n", cmd))
-		}
-		prompt.WriteString("\n")
-	}
-
-	prompt.WriteString("## Success Criteria\n")
-	prompt.WriteString("Task is complete when:\n")
-	prompt.WriteString("- All objectives are met\n")
-	prompt.WriteString("- All verification commands pass\n")
-	prompt.WriteString("- Code follows project conventions\n")
-	prompt.WriteString("- No security issues introduced\n")
-
-	return prompt.String()
+	return task.Name
 }
