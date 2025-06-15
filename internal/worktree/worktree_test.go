@@ -108,12 +108,6 @@ func TestManagerAdd(t *testing.T) {
 					BaseDir:   t.TempDir(),
 					AutoMkdir: true,
 				},
-				Naming: models.NamingConfig{
-					Template: "{{.Repository}}-{{.Branch}}",
-					SanitizeChars: map[string]string{
-						"/": "-",
-					},
-				},
 			},
 			wantErr: false,
 		},
@@ -126,9 +120,6 @@ func TestManagerAdd(t *testing.T) {
 					BaseDir:   t.TempDir(),
 					AutoMkdir: true,
 				},
-				Naming: models.NamingConfig{
-					Template: "{{.Repository}}-{{.Branch}}",
-				},
 			},
 			wantErr: false,
 		},
@@ -140,12 +131,6 @@ func TestManagerAdd(t *testing.T) {
 				Worktree: models.WorktreeConfig{
 					BaseDir:   t.TempDir(),
 					AutoMkdir: true,
-				},
-				Naming: models.NamingConfig{
-					Template: "{{.Repository}}-{{.Branch}}",
-					SanitizeChars: map[string]string{
-						"/": "-",
-					},
 				},
 			},
 			wantErr: false,
@@ -430,35 +415,24 @@ func TestGenerateWorktreePath(t *testing.T) {
 	tests := []struct {
 		name       string
 		branch     string
-		template   string
-		sanitize   map[string]string
 		repoName   string
 		wantSuffix string
 	}{
 		{
 			name:       "BasicTemplate",
 			branch:     "feature/test",
-			template:   "{{.Repository}}-{{.Branch}}",
-			sanitize:   map[string]string{"/": "-"},
 			repoName:   "myrepo",
 			wantSuffix: "github.com/test-user/test-repo/feature-test",
 		},
 		{
 			name:       "BranchOnly",
 			branch:     "main",
-			template:   "{{.Branch}}",
-			sanitize:   map[string]string{},
 			repoName:   "myrepo",
 			wantSuffix: "github.com/test-user/test-repo/main",
 		},
 		{
-			name:     "ComplexSanitization",
-			branch:   "feature/test:new",
-			template: "{{.Repository}}_{{.Branch}}",
-			sanitize: map[string]string{
-				"/": "_",
-				":": "-",
-			},
+			name:       "ComplexSanitization",
+			branch:     "feature/test:new",
 			repoName:   "myrepo",
 			wantSuffix: "github.com/test-user/test-repo/feature-test-new",
 		},
@@ -471,10 +445,6 @@ func TestGenerateWorktreePath(t *testing.T) {
 			config := &models.Config{
 				Worktree: models.WorktreeConfig{
 					BaseDir: "/base",
-				},
-				Naming: models.NamingConfig{
-					Template:      tt.template,
-					SanitizeChars: tt.sanitize,
 				},
 			}
 
@@ -494,16 +464,7 @@ func TestGenerateWorktreePath(t *testing.T) {
 }
 
 func TestSanitizePath(t *testing.T) {
-	config := &models.Config{
-		Naming: models.NamingConfig{
-			SanitizeChars: map[string]string{
-				"/":  "-",
-				":":  "_",
-				"\\": "-",
-				"*":  "",
-			},
-		},
-	}
+	config := &models.Config{}
 
 	m := New(nil, config)
 
@@ -512,9 +473,9 @@ func TestSanitizePath(t *testing.T) {
 		expected string
 	}{
 		{"feature/test", "feature-test"},
-		{"bugfix:issue-123", "bugfix_issue-123"},
-		{"feature\\windows", "feature-windows"},
-		{"feat*ure", "feature"},
+		{"bugfix:issue-123", "bugfix-issue-123"},
+		{"feature\\windows", "feature\\windows"}, // backslashes are not replaced
+		{"feat*ure", "feat*ure"},                 // asterisks are not replaced
 		{"normal-branch", "normal-branch"},
 		{"multiple//slashes", "multiple--slashes"},
 	}

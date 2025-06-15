@@ -43,8 +43,8 @@ func runTaskShow(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to initialize storage: %w", err)
 	}
 
-	// Create services
-	taskService := services.NewTaskService(storage)
+	// Create simplified task manager (no service layer)
+	taskManager := claude.NewTaskManager(storage, cfg)
 	finderService := services.NewFuzzyFinderService()
 	presenter := presenters.NewTaskPresenter()
 
@@ -52,7 +52,7 @@ func runTaskShow(cmd *cobra.Command, args []string) error {
 
 	if len(args) > 0 {
 		// Find task by ID or pattern
-		task, err = taskService.FindTaskByPattern(args[0])
+		task, err = taskManager.FindTaskByPattern(args[0])
 		if err != nil {
 			return err
 		}

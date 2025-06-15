@@ -87,27 +87,9 @@ func (usm *UnifiedSessionManager) CreateSession(ctx context.Context, execution *
 	return usm.tmuxManager.CreateSession(ctx, sessionOpts)
 }
 
-// buildClaudeCommand builds the appropriate Claude command for the execution type
+// buildClaudeCommand builds the appropriate Claude command for task execution
 func (usm *UnifiedSessionManager) buildClaudeCommand(execution *UnifiedExecution) string {
-	switch execution.ExecutionType {
-	case ExecutionTypeHeadless:
-		return usm.buildHeadlessCommand(execution)
-	case ExecutionTypeTask:
-		return usm.buildTaskCommand(execution)
-	case ExecutionTypeReview:
-		return usm.buildReviewCommand(execution)
-	default:
-		return usm.buildHeadlessCommand(execution) // fallback
-	}
-}
-
-// buildHeadlessCommand builds Claude command for headless execution
-func (usm *UnifiedSessionManager) buildHeadlessCommand(execution *UnifiedExecution) string {
-	// Escape the prompt for shell
-	escapedPrompt := escapeForShell(execution.Prompt)
-
-	// Build command with required flags for headless execution
-	return fmt.Sprintf(`claude --verbose --dangerously-skip-permissions --output-format stream-json -p "%s"`, escapedPrompt)
+	return usm.buildTaskCommand(execution)
 }
 
 // buildTaskCommand builds Claude command for task execution
@@ -128,27 +110,6 @@ func (usm *UnifiedSessionManager) buildTaskCommand(execution *UnifiedExecution) 
 	}
 
 	// Build command with task-specific flags and log capture
-	return fmt.Sprintf(`claude --verbose --dangerously-skip-permissions --output-format stream-json -p "%s" | tee "%s"`, escapedPrompt, logFile)
-}
-
-// buildReviewCommand builds Claude command for review execution
-func (usm *UnifiedSessionManager) buildReviewCommand(execution *UnifiedExecution) string {
-	// Escape the prompt for shell
-	escapedPrompt := escapeForShell(execution.Prompt)
-
-	// Generate log file path based on execution ID and timestamp
-	// Note: ExecutionID already includes type prefix (e.g., "review-{id}"), so use it directly
-	logDir := filepath.Join(usm.config.ConfigDir, "logs", "executions")
-	timestamp := time.Now().Format("20060102-150405")
-	logFile := filepath.Join(logDir, fmt.Sprintf("%s-%s.jsonl", timestamp, execution.ExecutionID))
-
-	// Ensure log directory exists
-	if err := os.MkdirAll(logDir, 0755); err != nil {
-		// If we can't create the log directory, proceed without logging to file
-		return fmt.Sprintf(`claude --verbose --dangerously-skip-permissions --output-format stream-json -p "%s"`, escapedPrompt)
-	}
-
-	// Build command with review-specific flags and log capture
 	return fmt.Sprintf(`claude --verbose --dangerously-skip-permissions --output-format stream-json -p "%s" | tee "%s"`, escapedPrompt, logFile)
 }
 

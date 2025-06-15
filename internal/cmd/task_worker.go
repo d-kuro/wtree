@@ -403,15 +403,9 @@ func (w *TaskWorker) executeTask(ctx context.Context, task *claude.Task, slot *c
 		return
 	}
 
-	displayName := task.Name
-	if displayName == "" && task.Prompt != "" {
-		// Truncate prompt to 60 characters if no name is available
-		if len(task.Prompt) > 60 {
-			displayName = task.Prompt[:57] + "..."
-		} else {
-			displayName = task.Prompt
-		}
-	}
+	// Use SimplifiedTask for consistent display name logic
+	simplified := claude.FromLegacyTask(task)
+	displayName := simplified.GetDisplayName()
 	fmt.Printf("Starting task: %s (ID: %s)\n", displayName, task.ID)
 
 	// Execute task through unified execution engine

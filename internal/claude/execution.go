@@ -47,7 +47,7 @@ type ExecutionMetadata struct {
 	Timeout          time.Duration   `json:"timeout"`
 }
 
-// ExecutionManager manages headless Claude executions
+// ExecutionManager manages Claude executions
 type ExecutionManager struct {
 	config     *models.ClaudeConfig
 	sessionMgr *tmux.SessionManager
@@ -84,10 +84,10 @@ func NewExecutionManager(config *models.ClaudeConfig) (*ExecutionManager, error)
 	}, nil
 }
 
-// Execute starts a headless Claude execution
+// Execute starts a Claude execution
 func (em *ExecutionManager) Execute(ctx context.Context, metadata *ExecutionMetadata) (*tmux.Session, error) {
 	// Auto cleanup old logs if enabled
-	if em.config.Headless.AutoCleanup && em.config.Headless.LogRetentionDays > 0 {
+	if em.config.Execution.AutoCleanup {
 		go func() {
 			if err := em.autoCleanupLogs(); err != nil {
 				fmt.Printf("Warning: auto cleanup failed: %v\n", err)
@@ -147,7 +147,7 @@ func (em *ExecutionManager) Execute(ctx context.Context, metadata *ExecutionMeta
 			"prompt":       truncateString(metadata.Prompt, 100),
 			"repository":   metadata.Repository,
 			"priority":     metadata.Priority,
-			"type":         "headless",
+			"type":         "task",
 		},
 	}
 
@@ -177,7 +177,7 @@ func (em *ExecutionManager) buildClaudeCommand(prompt string) string {
 	escapedPrompt = strings.ReplaceAll(escapedPrompt, `$`, `\$`)
 	escapedPrompt = strings.ReplaceAll(escapedPrompt, "`", "\\`")
 
-	// Build command with required flags for headless execution
+	// Build command with required flags for execution
 	args := []string{
 		em.config.Executable,
 		"--verbose",
@@ -525,12 +525,9 @@ func (em *ExecutionManager) GetLogDir() string {
 
 // autoCleanupLogs automatically cleans up old log files based on retention policy
 func (em *ExecutionManager) autoCleanupLogs() error {
-	retentionDays := em.config.Headless.LogRetentionDays
-	if retentionDays <= 0 {
-		return nil // No cleanup needed
-	}
-
-	cutoff := time.Now().AddDate(0, 0, -retentionDays)
+	// Use default retention of 30 days
+	const defaultRetentionDays = 30
+	cutoff := time.Now().AddDate(0, 0, -defaultRetentionDays)
 
 	// Clean up execution logs
 	executionsDir := filepath.Join(em.logDir, "executions")
@@ -729,10 +726,9 @@ func FindLogFileByExecutionID(logDir string, startTime time.Time, executionID st
 
 	// Try different execution types based on execution ID patterns
 	typePatterns := []string{
-		fmt.Sprintf("%s-task-%s.jsonl", timestamp, executionID),     // Task execution
-		fmt.Sprintf("%s-review-%s.jsonl", timestamp, executionID),   // Review execution
-		fmt.Sprintf("%s-headless-%s.jsonl", timestamp, executionID), // Headless execution
-		fmt.Sprintf("%s-%s.jsonl", timestamp, executionID),          // Generic format
+		fmt.Sprintf("%s-task-%s.jsonl", timestamp, executionID), // Task execution
+		fmt.Sprintf("%s-task-%s.jsonl", timestamp, executionID), // Task execution
+		fmt.Sprintf("%s-%s.jsonl", timestamp, executionID),      // Generic format
 	}
 
 	for _, pattern := range typePatterns {
@@ -770,10 +766,9 @@ func FindLogFileByExecutionID(logDir string, startTime time.Time, executionID st
 	if _, err := os.Stat(dateDirPath); err == nil {
 		// Try multiple file patterns in date subdirectory
 		legacyPatterns := []string{
-			fmt.Sprintf("%s.jsonl", executionID),          // Original execution ID
-			fmt.Sprintf("headless-%s.jsonl", executionID), // Headless prefix
-			fmt.Sprintf("task-%s.jsonl", executionID),     // Task prefix
-			fmt.Sprintf("review-%s.jsonl", executionID),   // Review prefix
+			fmt.Sprintf("%s.jsonl", executionID),      // Original execution ID
+			fmt.Sprintf("task-%s.jsonl", executionID), // Task prefix
+			fmt.Sprintf("task-%s.jsonl", executionID), // Task prefix
 		}
 
 		for _, pattern := range legacyPatterns {

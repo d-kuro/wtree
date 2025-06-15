@@ -13,9 +13,7 @@ import (
 type ExecutionType string
 
 const (
-	ExecutionTypeHeadless ExecutionType = "headless"
-	ExecutionTypeTask     ExecutionType = "task"
-	ExecutionTypeReview   ExecutionType = "review"
+	ExecutionTypeTask ExecutionType = "task"
 )
 
 // UnifiedExecution represents a unified execution record
@@ -23,7 +21,7 @@ type UnifiedExecution struct {
 	// Core identification
 	ExecutionID   string        `json:"execution_id"`   // Unique across all execution types
 	SessionID     string        `json:"session_id"`     // tmux session identifier
-	ExecutionType ExecutionType `json:"execution_type"` // "headless", "task", "review"
+	ExecutionType ExecutionType `json:"execution_type"` // "task"
 
 	// Timing and status
 	StartTime time.Time       `json:"start_time"`
@@ -36,7 +34,7 @@ type UnifiedExecution struct {
 	TmuxSession string `json:"tmux_session"`
 
 	// Content and results
-	Prompt string           `json:"prompt"` // For headless: user prompt, For tasks: generated prompt
+	Prompt string           `json:"prompt"` // User prompt or generated prompt for tasks
 	Result *ExecutionResult `json:"result,omitempty"`
 
 	// Task-specific information (when ExecutionType == "task")
@@ -226,49 +224,6 @@ func (ee *ExecutionEngine) ExecuteTask(ctx context.Context, task *Task) (*Unifie
 	}
 
 	return execution, nil
-}
-
-// ExecuteHeadless is a convenience method for headless executions
-func (ee *ExecutionEngine) ExecuteHeadless(ctx context.Context, prompt, repository, workingDir string, options ...HeadlessOption) (*UnifiedExecution, error) {
-	req := &ExecutionRequest{
-		Type:       ExecutionTypeHeadless,
-		Prompt:     prompt,
-		Repository: repository,
-		WorkingDir: workingDir,
-		Priority:   "normal",
-		Timeout:    30 * time.Minute,
-	}
-
-	// Apply options
-	for _, opt := range options {
-		opt(req)
-	}
-
-	return ee.Execute(ctx, req)
-}
-
-// HeadlessOption represents options for headless execution
-type HeadlessOption func(*ExecutionRequest)
-
-// WithPriority sets the execution priority
-func WithPriority(priority string) HeadlessOption {
-	return func(req *ExecutionRequest) {
-		req.Priority = priority
-	}
-}
-
-// WithTags sets execution tags
-func WithTags(tags []string) HeadlessOption {
-	return func(req *ExecutionRequest) {
-		req.Tags = tags
-	}
-}
-
-// WithTimeout sets execution timeout
-func WithTimeout(timeout time.Duration) HeadlessOption {
-	return func(req *ExecutionRequest) {
-		req.Timeout = timeout
-	}
 }
 
 // GetExecution retrieves a unified execution by ID

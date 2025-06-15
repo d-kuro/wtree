@@ -103,17 +103,8 @@ func TestConfigDefaults(t *testing.T) {
 			AutoMkdir: true,
 		},
 		Finder: FinderConfig{
-			Preview:       true,
-			PreviewSize:   3,
-			KeybindSelect: "enter",
-			KeybindCancel: "esc",
-		},
-		Naming: NamingConfig{
-			Template: "{{.Repository}}-{{.Branch}}",
-			SanitizeChars: map[string]string{
-				"/": "-",
-				":": "-",
-			},
+			Preview: true,
+			// removed deleted fields: PreviewSize, KeybindSelect, KeybindCancel
 		},
 		UI: UIConfig{
 			Icons: true,
@@ -130,27 +121,11 @@ func TestConfigDefaults(t *testing.T) {
 	if !cfg.Finder.Preview {
 		t.Error("Default Preview should be true")
 	}
-	if cfg.Finder.PreviewSize != 3 {
-		t.Errorf("Default PreviewSize mismatch: got %d, want 3", cfg.Finder.PreviewSize)
-	}
-	if cfg.Finder.KeybindSelect != "enter" {
-		t.Errorf("Default KeybindSelect mismatch: got %s, want enter", cfg.Finder.KeybindSelect)
-	}
-	if cfg.Finder.KeybindCancel != "esc" {
-		t.Errorf("Default KeybindCancel mismatch: got %s, want esc", cfg.Finder.KeybindCancel)
-	}
-	if cfg.Naming.Template != "{{.Repository}}-{{.Branch}}" {
-		t.Errorf("Default Template mismatch: got %s", cfg.Naming.Template)
-	}
-	if len(cfg.Naming.SanitizeChars) != 2 {
-		t.Errorf("Default SanitizeChars should have 2 entries, got %d", len(cfg.Naming.SanitizeChars))
-	}
-	if cfg.Naming.SanitizeChars["/"] != "-" {
-		t.Error("Default SanitizeChars should replace / with -")
-	}
-	if cfg.Naming.SanitizeChars[":"] != "-" {
-		t.Error("Default SanitizeChars should replace : with -")
-	}
+	// cfg.Finder.PreviewSize field removed
+	// cfg.Finder.KeybindSelect field removed
+	// cfg.Finder.KeybindCancel field removed
+	// cfg.Naming.Template field removed
+	// Naming field removed, no longer testing SanitizeChars
 	if !cfg.UI.Icons {
 		t.Error("Default Icons should be true")
 	}

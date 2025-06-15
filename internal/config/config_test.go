@@ -56,18 +56,10 @@ func TestInit(t *testing.T) {
 	if !viper.GetBool("finder.preview") {
 		t.Errorf("Default finder.preview should be true")
 	}
-	if viper.GetInt("finder.preview_size") != 3 {
-		t.Errorf("Default finder.preview_size should be 3")
-	}
-	if viper.GetString("finder.keybind_select") != "enter" {
-		t.Errorf("Default finder.keybind_select should be 'enter'")
-	}
-	if viper.GetString("finder.keybind_cancel") != "esc" {
-		t.Errorf("Default finder.keybind_cancel should be 'esc'")
-	}
-	if viper.GetString("naming.template") != "{{.Host}}/{{.Owner}}/{{.Repository}}/{{.Branch}}" {
-		t.Errorf("Default naming.template not set correctly")
-	}
+	// finder.preview_size field removed
+	// finder.keybind_select field removed
+	// finder.keybind_cancel field removed
+	// naming.template field removed
 	if !viper.GetBool("ui.icons") {
 		t.Errorf("Default ui.icons should be true")
 	}
@@ -87,11 +79,8 @@ func TestLoad(t *testing.T) {
 	viper.Set("worktree.basedir", "~/test-worktrees")
 	viper.Set("worktree.auto_mkdir", false)
 	viper.Set("finder.preview", false)
-	viper.Set("finder.preview_size", 5)
-	viper.Set("finder.keybind_select", "tab")
-	viper.Set("finder.keybind_cancel", "ctrl-c")
-	viper.Set("naming.template", "{{.Branch}}")
-	viper.Set("naming.sanitize_chars", map[string]string{"/": "_"})
+	// removed references to deleted fields: preview_size, keybind_select, keybind_cancel, template
+	// naming.sanitize_chars removed
 	viper.Set("ui.icons", false)
 
 	cfg, err := Load()
@@ -106,18 +95,10 @@ func TestLoad(t *testing.T) {
 	if cfg.Finder.Preview {
 		t.Errorf("FinderConfig.Preview = %v, want false", cfg.Finder.Preview)
 	}
-	if cfg.Finder.PreviewSize != 5 {
-		t.Errorf("FinderConfig.PreviewSize = %d, want 5", cfg.Finder.PreviewSize)
-	}
-	if cfg.Finder.KeybindSelect != "tab" {
-		t.Errorf("FinderConfig.KeybindSelect = %s, want tab", cfg.Finder.KeybindSelect)
-	}
-	if cfg.Finder.KeybindCancel != "ctrl-c" {
-		t.Errorf("FinderConfig.KeybindCancel = %s, want ctrl-c", cfg.Finder.KeybindCancel)
-	}
-	if cfg.Naming.Template != "{{.Branch}}" {
-		t.Errorf("NamingConfig.Template = %s, want {{.Branch}}", cfg.Naming.Template)
-	}
+	// cfg.Finder.PreviewSize field removed
+	// cfg.Finder.KeybindSelect field removed
+	// cfg.Finder.KeybindCancel field removed
+	// cfg.Naming.Template field removed
 	if cfg.UI.Icons {
 		t.Errorf("UIConfig.Icons = %v, want false", cfg.UI.Icons)
 	}
@@ -229,14 +210,8 @@ func TestConfigStructureIntegrity(t *testing.T) {
 			AutoMkdir: true,
 		},
 		Finder: models.FinderConfig{
-			Preview:       true,
-			PreviewSize:   5,
-			KeybindSelect: "enter",
-			KeybindCancel: "esc",
-		},
-		Naming: models.NamingConfig{
-			Template:      "{{.Repository}}-{{.Branch}}",
-			SanitizeChars: map[string]string{"/": "-", ":": "-"},
+			Preview: true,
+			// removed deleted fields: PreviewSize, KeybindSelect, KeybindCancel
 		},
 		UI: models.UIConfig{
 			Icons: false,
@@ -248,11 +223,8 @@ func TestConfigStructureIntegrity(t *testing.T) {
 	viper.Set("worktree.basedir", cfg.Worktree.BaseDir)
 	viper.Set("worktree.auto_mkdir", cfg.Worktree.AutoMkdir)
 	viper.Set("finder.preview", cfg.Finder.Preview)
-	viper.Set("finder.preview_size", cfg.Finder.PreviewSize)
-	viper.Set("finder.keybind_select", cfg.Finder.KeybindSelect)
-	viper.Set("finder.keybind_cancel", cfg.Finder.KeybindCancel)
-	viper.Set("naming.template", cfg.Naming.Template)
-	viper.Set("naming.sanitize_chars", cfg.Naming.SanitizeChars)
+	// removed viper.Set calls for deleted fields: preview_size, keybind_select, keybind_cancel, template
+	// naming.sanitize_chars removed
 	viper.Set("ui.icons", cfg.UI.Icons)
 
 	// Load and verify
@@ -271,18 +243,10 @@ func TestConfigStructureIntegrity(t *testing.T) {
 	if loaded.Finder.Preview != cfg.Finder.Preview {
 		t.Errorf("Finder.Preview mismatch")
 	}
-	if loaded.Finder.PreviewSize != cfg.Finder.PreviewSize {
-		t.Errorf("Finder.PreviewSize mismatch")
-	}
-	if loaded.Finder.KeybindSelect != cfg.Finder.KeybindSelect {
-		t.Errorf("Finder.KeybindSelect mismatch")
-	}
-	if loaded.Finder.KeybindCancel != cfg.Finder.KeybindCancel {
-		t.Errorf("Finder.KeybindCancel mismatch")
-	}
-	if loaded.Naming.Template != cfg.Naming.Template {
-		t.Errorf("Naming.Template mismatch")
-	}
+	// loaded.Finder.PreviewSize field removed
+	// loaded.Finder.KeybindSelect field removed
+	// loaded.Finder.KeybindCancel field removed
+	// loaded.Naming.Template field removed
 	if loaded.UI.Icons != cfg.UI.Icons {
 		t.Errorf("UI.Icons mismatch")
 	}
