@@ -462,30 +462,3 @@ func TestGenerateWorktreePath(t *testing.T) {
 		})
 	}
 }
-
-func TestSanitizePath(t *testing.T) {
-	config := &models.Config{}
-
-	m := New(nil, config)
-
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"feature/test", "feature-test"},
-		{"bugfix:issue-123", "bugfix-issue-123"},
-		{"feature\\windows", "feature\\windows"}, // backslashes are not replaced
-		{"feat*ure", "feat*ure"},                 // asterisks are not replaced
-		{"normal-branch", "normal-branch"},
-		{"multiple//slashes", "multiple--slashes"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			result := m.sanitizePath(tt.input)
-			if result != tt.expected {
-				t.Errorf("sanitizePath(%s) = %s, want %s", tt.input, result, tt.expected)
-			}
-		})
-	}
-}

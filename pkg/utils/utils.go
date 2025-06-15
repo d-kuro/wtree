@@ -129,3 +129,26 @@ func GenerateUUID() string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x",
 		b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
 }
+
+// SanitizeForFilesystem converts strings to filesystem-safe names by replacing problematic characters.
+func SanitizeForFilesystem(input string) string {
+	// Replace problematic characters
+	replacements := map[string]string{
+		"/":  "-",
+		"\\": "-",
+		":":  "-",
+		"*":  "-",
+		"?":  "-",
+		"\"": "-",
+		"<":  "-",
+		">":  "-",
+		"|":  "-",
+	}
+
+	result := input
+	for old, new := range replacements {
+		result = strings.ReplaceAll(result, old, new)
+	}
+
+	return result
+}

@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
+
+	"github.com/d-kuro/gwq/pkg/utils"
 )
 
 // RepositoryInfo contains parsed repository information.
@@ -88,25 +90,7 @@ func normalizeURL(repoURL string) string {
 
 // sanitizeBranchName converts branch names to filesystem-safe names.
 func sanitizeBranchName(branch string) string {
-	// Replace problematic characters
-	replacements := map[string]string{
-		"/":  "-",
-		"\\": "-",
-		":":  "-",
-		"*":  "-",
-		"?":  "-",
-		"\"": "-",
-		"<":  "-",
-		">":  "-",
-		"|":  "-",
-	}
-
-	result := branch
-	for old, new := range replacements {
-		result = strings.ReplaceAll(result, old, new)
-	}
-
-	return result
+	return utils.SanitizeForFilesystem(branch)
 }
 
 // ParseWorktreePath extracts repository info and branch from a worktree path.

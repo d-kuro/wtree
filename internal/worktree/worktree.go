@@ -215,19 +215,3 @@ func (m *Manager) generateWorktreePath(branch string) (string, error) {
 
 	return path, nil
 }
-
-// sanitizePath replaces invalid characters in a path component.
-func (m *Manager) sanitizePath(path string) string {
-	// Replace filesystem-incompatible characters
-	replacements := map[string]string{
-		"/": "-",
-		":": "-",
-	}
-
-	result := path
-	for old, new := range replacements {
-		result = strings.ReplaceAll(result, old, new)
-	}
-
-	return result
-}
