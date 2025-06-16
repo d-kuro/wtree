@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/d-kuro/gwq/internal/discovery"
+	"github.com/d-kuro/gwq/pkg/models"
 	"github.com/spf13/cobra"
 )
 
@@ -81,18 +81,21 @@ func runList(cmd *cobra.Command, args []string) error {
 }
 
 func showGlobalWorktrees(ctx *CommandContext) error {
-	entries, err := discovery.DiscoverGlobalWorktrees(ctx.Config.Worktree.BaseDir)
+	worktreePointers, err := ctx.DiscoverGlobalWorktrees()
 	if err != nil {
 		return fmt.Errorf("failed to discover worktrees: %w", err)
 	}
 
-	if len(entries) == 0 {
+	if len(worktreePointers) == 0 {
 		ctx.Printer.PrintInfo("No worktrees found in " + ctx.Config.Worktree.BaseDir)
 		return nil
 	}
 
-	// Convert to worktree models with repository names for clarity
-	worktrees := discovery.ConvertToWorktreeModels(entries, !listVerbose)
+	// Convert from []*models.Worktree to []models.Worktree for printer
+	var worktrees []models.Worktree
+	for _, w := range worktreePointers {
+		worktrees = append(worktrees, *w)
+	}
 
 	if listJSON {
 		return ctx.Printer.PrintWorktreesJSON(worktrees)

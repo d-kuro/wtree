@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/d-kuro/gwq/pkg/models"
+	"github.com/d-kuro/gwq/pkg/utils"
 	"github.com/spf13/viper"
 )
 
@@ -83,24 +83,24 @@ func Load() (*models.Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	cfg.Worktree.BaseDir = os.ExpandEnv(cfg.Worktree.BaseDir)
-	if strings.HasPrefix(cfg.Worktree.BaseDir, "~/") {
-		home, _ := os.UserHomeDir()
-		cfg.Worktree.BaseDir = filepath.Join(home, cfg.Worktree.BaseDir[2:])
+	expandedPath, err := utils.ExpandPath(cfg.Worktree.BaseDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to expand worktree base dir: %w", err)
 	}
+	cfg.Worktree.BaseDir = expandedPath
 
 	// Expand Claude configuration paths
-	cfg.Claude.ConfigDir = os.ExpandEnv(cfg.Claude.ConfigDir)
-	if strings.HasPrefix(cfg.Claude.ConfigDir, "~/") {
-		home, _ := os.UserHomeDir()
-		cfg.Claude.ConfigDir = filepath.Join(home, cfg.Claude.ConfigDir[2:])
+	expandedPath, err = utils.ExpandPath(cfg.Claude.ConfigDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to expand claude config dir: %w", err)
 	}
+	cfg.Claude.ConfigDir = expandedPath
 
-	cfg.Claude.Queue.QueueDir = os.ExpandEnv(cfg.Claude.Queue.QueueDir)
-	if strings.HasPrefix(cfg.Claude.Queue.QueueDir, "~/") {
-		home, _ := os.UserHomeDir()
-		cfg.Claude.Queue.QueueDir = filepath.Join(home, cfg.Claude.Queue.QueueDir[2:])
+	expandedPath, err = utils.ExpandPath(cfg.Claude.Queue.QueueDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to expand claude queue dir: %w", err)
 	}
+	cfg.Claude.Queue.QueueDir = expandedPath
 
 	return &cfg, nil
 }
@@ -133,22 +133,19 @@ func Get() *models.Config {
 		}
 
 		// Apply path expansions to defaults
-		defaultCfg.Worktree.BaseDir = os.ExpandEnv(defaultCfg.Worktree.BaseDir)
-		if strings.HasPrefix(defaultCfg.Worktree.BaseDir, "~/") {
-			home, _ := os.UserHomeDir()
-			defaultCfg.Worktree.BaseDir = filepath.Join(home, defaultCfg.Worktree.BaseDir[2:])
+		expandedPath, err := utils.ExpandPath(defaultCfg.Worktree.BaseDir)
+		if err == nil {
+			defaultCfg.Worktree.BaseDir = expandedPath
 		}
 
-		defaultCfg.Claude.ConfigDir = os.ExpandEnv(defaultCfg.Claude.ConfigDir)
-		if strings.HasPrefix(defaultCfg.Claude.ConfigDir, "~/") {
-			home, _ := os.UserHomeDir()
-			defaultCfg.Claude.ConfigDir = filepath.Join(home, defaultCfg.Claude.ConfigDir[2:])
+		expandedPath, err = utils.ExpandPath(defaultCfg.Claude.ConfigDir)
+		if err == nil {
+			defaultCfg.Claude.ConfigDir = expandedPath
 		}
 
-		defaultCfg.Claude.Queue.QueueDir = os.ExpandEnv(defaultCfg.Claude.Queue.QueueDir)
-		if strings.HasPrefix(defaultCfg.Claude.Queue.QueueDir, "~/") {
-			home, _ := os.UserHomeDir()
-			defaultCfg.Claude.Queue.QueueDir = filepath.Join(home, defaultCfg.Claude.Queue.QueueDir[2:])
+		expandedPath, err = utils.ExpandPath(defaultCfg.Claude.Queue.QueueDir)
+		if err == nil {
+			defaultCfg.Claude.Queue.QueueDir = expandedPath
 		}
 
 		return &defaultCfg

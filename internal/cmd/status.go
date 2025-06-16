@@ -102,6 +102,7 @@ func runStatusOnce(cmd *cobra.Command) error {
 }
 
 func runStatusWatch(cmd *cobra.Command, interval time.Duration) error {
+	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
@@ -109,16 +110,27 @@ func runStatusWatch(cmd *cobra.Command, interval time.Duration) error {
 
 	printer := ui.New(&cfg.UI)
 
+	// Setup watch mode (cursor control and cancellation)
+	cleanup, ctx := setupWatchMode()
+	defer cleanup()
+
+	// Create refresh function for status updates
+	refresh := createRefreshFunction(ctx, cfg, printer)
+
+	// Run the watch loop with periodic refreshes
+	return runWatchLoop(ctx, refresh, interval)
+}
+
+// setupWatchMode initializes cursor control and cancellation handling
+func setupWatchMode() (func(), context.Context) {
 	hideCursor := "\033[?25l"
 	showCursor := "\033[?25h"
-	clearScreen := "\033[H\033[2J"
 
 	fmt.Print(hideCursor)
-	defer fmt.Print(showCursor)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
+	// Setup interrupt signal handling
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
@@ -127,10 +139,19 @@ func runStatusWatch(cmd *cobra.Command, interval time.Duration) error {
 		cancel()
 	}()
 
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
+	cleanup := func() {
+		fmt.Print(showCursor)
+		cancel()
+	}
 
-	refresh := func() error {
+	return cleanup, ctx
+}
+
+// createRefreshFunction creates the refresh function for watch mode
+func createRefreshFunction(ctx context.Context, cfg *models.Config, printer *ui.Printer) func() error {
+	clearScreen := "\033[H\033[2J"
+
+	return func() error {
 		fmt.Print(clearScreen)
 
 		statuses, err := collectWorktreeStatuses(ctx, cfg, printer)
@@ -140,14 +161,12 @@ func runStatusWatch(cmd *cobra.Command, interval time.Duration) error {
 
 		statuses = applyFiltersAndSort(statuses)
 
-		summary := calculateSummary(statuses)
-		currentRepo := getCurrentRepository()
+		// Display summary header
+		if err := displayWatchHeader(statuses); err != nil {
+			return err
+		}
 
-		fmt.Printf("Worktrees Status (%s) - Updated: %s\n",
-			currentRepo, time.Now().Format("15:04:05"))
-		fmt.Printf("Total: %d | Changed: %d | Up to date: %d | Inactive: %d\n\n",
-			summary.Total, summary.Modified, summary.Clean, summary.Stale)
-
+		// Output status details
 		if err := outputStatuses(statuses, printer, cfg); err != nil {
 			return err
 		}
@@ -155,11 +174,32 @@ func runStatusWatch(cmd *cobra.Command, interval time.Duration) error {
 		fmt.Println("\n[Press Ctrl+C to exit]")
 		return nil
 	}
+}
 
+// displayWatchHeader displays the summary header for watch mode
+func displayWatchHeader(statuses []*models.WorktreeStatus) error {
+	summary := calculateSummary(statuses)
+	currentRepo := getCurrentRepository()
+
+	fmt.Printf("Worktrees Status (%s) - Updated: %s\n",
+		currentRepo, time.Now().Format("15:04:05"))
+	fmt.Printf("Total: %d | Changed: %d | Up to date: %d | Inactive: %d\n\n",
+		summary.Total, summary.Modified, summary.Clean, summary.Stale)
+
+	return nil
+}
+
+// runWatchLoop runs the main watch loop with periodic refreshes
+func runWatchLoop(ctx context.Context, refresh func() error, interval time.Duration) error {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	// Initial refresh
 	if err := refresh(); err != nil {
 		return err
 	}
 
+	// Main loop
 	for {
 		select {
 		case <-ctx.Done():

@@ -73,6 +73,27 @@ func (ctx *CommandContext) GetFinder() *finder.Finder {
 	return ctx.finder
 }
 
+// GetGlobalFinder returns a finder instance for global operations that don't require a git repository.
+// This creates a finder with an empty git instance, suitable for global worktree operations.
+func (ctx *CommandContext) GetGlobalFinder() *finder.Finder {
+	// For global operations, we use an empty git instance
+	emptyGit := &git.Git{}
+	return finder.NewWithUI(emptyGit, &ctx.Config.Finder, &ctx.Config.UI)
+}
+
+// Factory functions for commands that haven't been refactored to use CommandContext yet
+
+// CreateFinder creates a finder instance for local operations with the given git instance.
+func CreateFinder(g *git.Git, cfg *models.Config) *finder.Finder {
+	return finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
+}
+
+// CreateGlobalFinder creates a finder instance for global operations.
+func CreateGlobalFinder(cfg *models.Config) *finder.Finder {
+	emptyGit := &git.Git{}
+	return finder.NewWithUI(emptyGit, &cfg.Finder, &cfg.UI)
+}
+
 // DiscoverGlobalWorktrees discovers global worktrees when -g flag is used.
 func (ctx *CommandContext) DiscoverGlobalWorktrees() ([]*models.Worktree, error) {
 	entries, err := discovery.DiscoverGlobalWorktrees(ctx.Config.Worktree.BaseDir)
@@ -89,6 +110,28 @@ func (ctx *CommandContext) DiscoverGlobalWorktrees() ([]*models.Worktree, error)
 			CommitHash: entry.CommitHash,
 			IsMain:     entry.IsMain,
 		})
+	}
+
+	return worktrees, nil
+}
+
+// GetWorktrees returns worktrees with support for both global and local modes
+func (ctx *CommandContext) GetWorktrees(forceGlobal bool) ([]*models.Worktree, error) {
+	// Use global discovery if forced or not in a git repository
+	if forceGlobal || !ctx.IsGitRepo {
+		return ctx.DiscoverGlobalWorktrees()
+	}
+
+	// Use local worktree manager for repository-specific worktrees
+	localWorktrees, err := ctx.WorktreeManager.List()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list worktrees: %w", err)
+	}
+
+	// Convert []models.Worktree to []*models.Worktree
+	var worktrees []*models.Worktree
+	for i := range localWorktrees {
+		worktrees = append(worktrees, &localWorktrees[i])
 	}
 
 	return worktrees, nil

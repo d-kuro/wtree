@@ -268,13 +268,8 @@ func removeGlobalWorktree(ctx *CommandContext, args []string) error {
 		// No pattern - show all in fuzzy finder
 		worktrees := discovery.ConvertToWorktreeModels(nonMainEntries, true)
 
-		// Create a temporary git instance for finder
-		g, _ := git.NewFromCwd()
-		if g == nil {
-			g = &git.Git{}
-		}
-
-		f := finder.NewWithUI(g, &ctx.Config.Finder, &ctx.Config.UI)
+		// Use global finder for selection
+		f := ctx.GetGlobalFinder()
 		selected, err := f.SelectMultipleWorktrees(worktrees)
 		if err != nil {
 			return fmt.Errorf("worktree selection cancelled")

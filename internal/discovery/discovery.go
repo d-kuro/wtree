@@ -10,6 +10,7 @@ import (
 	"github.com/d-kuro/gwq/internal/git"
 	"github.com/d-kuro/gwq/internal/url"
 	"github.com/d-kuro/gwq/pkg/models"
+	"github.com/d-kuro/gwq/pkg/utils"
 )
 
 // GlobalWorktreeEntry represents a discovered worktree.
@@ -28,14 +29,12 @@ func DiscoverGlobalWorktrees(baseDir string) ([]*GlobalWorktreeEntry, error) {
 		return nil, fmt.Errorf("base directory not configured")
 	}
 
-	// Expand ~ to home directory
-	if strings.HasPrefix(baseDir, "~/") {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get home directory: %w", err)
-		}
-		baseDir = filepath.Join(home, baseDir[2:])
+	// Expand path (handles ~, env vars, and relative paths)
+	expandedPath, err := utils.ExpandPath(baseDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to expand base directory path: %w", err)
 	}
+	baseDir = expandedPath
 
 	// Check if base directory exists
 	if _, err := os.Stat(baseDir); os.IsNotExist(err) {
@@ -44,7 +43,7 @@ func DiscoverGlobalWorktrees(baseDir string) ([]*GlobalWorktreeEntry, error) {
 
 	var entries []*GlobalWorktreeEntry
 
-	err := filepath.Walk(baseDir, func(path string, info os.FileInfo, err error) error {
+	err = filepath.Walk(baseDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return nil // Skip errors and continue walking
 		}

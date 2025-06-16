@@ -7,7 +7,6 @@ import (
 
 	"github.com/d-kuro/gwq/internal/config"
 	"github.com/d-kuro/gwq/internal/finder"
-	"github.com/d-kuro/gwq/internal/git"
 	"github.com/d-kuro/gwq/internal/tmux"
 	"github.com/d-kuro/gwq/pkg/models"
 	"github.com/spf13/cobra"
@@ -111,9 +110,8 @@ func findMatchingSessions(sessions []*tmux.Session, pattern string) []*tmux.Sess
 }
 
 func createSessionFinder(cfg *models.Config) *finder.Finder {
-	// Create minimal git instance for finder (not used for sessions)
-	g := &git.Git{}
-	return finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
+	// Use centralized factory for global finder
+	return CreateGlobalFinder(cfg)
 }
 
 func selectSessionWithFinder(sessions []*tmux.Session, cfg *models.Config) (*tmux.Session, error) {
