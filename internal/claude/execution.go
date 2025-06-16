@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/d-kuro/gwq/internal/tmux"
 	"github.com/d-kuro/gwq/pkg/models"
+	"github.com/d-kuro/gwq/pkg/system"
 )
 
 // ExecutionStatus represents the status of a Claude execution
@@ -52,6 +52,7 @@ type ExecutionManager struct {
 	config     *models.ClaudeConfig
 	sessionMgr *tmux.SessionManager
 	logDir     string
+	system     system.SystemInterface
 	mu         sync.RWMutex
 }
 
@@ -81,6 +82,7 @@ func NewExecutionManager(config *models.ClaudeConfig) (*ExecutionManager, error)
 		config:     config,
 		sessionMgr: sessionMgr,
 		logDir:     logDir,
+		system:     system.NewStandardSystem(),
 	}, nil
 }
 
@@ -117,11 +119,11 @@ func (em *ExecutionManager) Execute(ctx context.Context, metadata *ExecutionMeta
 
 	// Create named pipe for capturing output
 	pipePath := filepath.Join(os.TempDir(), fmt.Sprintf("gwq-claude-%s.pipe", metadata.ExecutionID))
-	if err := syscallMkfifo(pipePath, 0600); err != nil {
+	if err := em.system.CreateNamedPipe(pipePath, 0600); err != nil {
 		return nil, fmt.Errorf("failed to create named pipe: %w", err)
 	}
 	defer func() {
-		if err := os.Remove(pipePath); err != nil {
+		if err := em.system.RemoveFile(pipePath); err != nil {
 			fmt.Printf("Warning: failed to remove pipe: %v\n", err)
 		}
 	}()
@@ -509,13 +511,6 @@ func (em *ExecutionManager) DetermineExecutionState(executionID string) Executio
 	}
 
 	return ExecutionStatusAborted
-}
-
-// syscallMkfifo creates a named pipe (FIFO)
-func syscallMkfifo(path string, mode uint32) error {
-	// Use mkfifo command as a portable solution
-	cmd := exec.Command("mkfifo", path)
-	return cmd.Run()
 }
 
 // GetLogDir returns the log directory path

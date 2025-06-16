@@ -8,7 +8,6 @@ import (
 
 	"github.com/d-kuro/gwq/internal/config"
 	"github.com/d-kuro/gwq/internal/discovery"
-	"github.com/d-kuro/gwq/internal/finder"
 	"github.com/d-kuro/gwq/internal/git"
 	"github.com/d-kuro/gwq/internal/worktree"
 	"github.com/d-kuro/gwq/pkg/models"
@@ -178,7 +177,7 @@ func getLocalWorktreePathForExec(cfg *models.Config, pattern string) (string, er
 			return matches[0].Path, nil
 		} else {
 			// Multiple matches - use fuzzy finder
-			f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
+			f := CreateFinder(g, cfg)
 			selected, err := f.SelectWorktree(matches)
 			if err != nil {
 				return "", fmt.Errorf("worktree selection cancelled")
@@ -200,7 +199,7 @@ func getLocalWorktreePathForExec(cfg *models.Config, pattern string) (string, er
 			return worktrees[0].Path, nil
 		}
 
-		f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
+		f := CreateFinder(g, cfg)
 		selected, err := f.SelectWorktree(worktrees)
 		if err != nil {
 			return "", fmt.Errorf("worktree selection cancelled")
@@ -233,8 +232,7 @@ func getGlobalWorktreePathForExec(cfg *models.Config, pattern string) (string, e
 			// Multiple matches - use fuzzy finder
 			worktrees := discovery.ConvertToWorktreeModels(matches, true)
 
-			g := &git.Git{}
-			f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
+			f := CreateGlobalFinder(cfg)
 			selectedWT, err := f.SelectWorktree(worktrees)
 			if err != nil {
 				return "", fmt.Errorf("worktree selection cancelled")
@@ -252,8 +250,7 @@ func getGlobalWorktreePathForExec(cfg *models.Config, pattern string) (string, e
 		// No pattern - show all in fuzzy finder
 		worktrees := discovery.ConvertToWorktreeModels(entries, true)
 
-		g := &git.Git{}
-		f := finder.NewWithUI(g, &cfg.Finder, &cfg.UI)
+		f := CreateGlobalFinder(cfg)
 		selectedWT, err := f.SelectWorktree(worktrees)
 		if err != nil {
 			return "", fmt.Errorf("worktree selection cancelled")

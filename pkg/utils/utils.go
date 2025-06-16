@@ -72,6 +72,43 @@ func Unique[T comparable](slice []T) []T {
 	return result
 }
 
+// ExpandPath expands environment variables, tilde (~), and converts relative paths to absolute paths.
+// It returns an error if the path cannot be expanded.
+func ExpandPath(path string) (string, error) {
+	if path == "" {
+		return "", nil
+	}
+
+	// Step 1: Expand environment variables
+	path = os.ExpandEnv(path)
+
+	// Step 2: Expand tilde (~)
+	if strings.HasPrefix(path, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("failed to get home directory: %w", err)
+		}
+		path = filepath.Join(home, path[2:])
+	} else if path == "~" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("failed to get home directory: %w", err)
+		}
+		path = home
+	}
+
+	// Step 3: Convert to absolute path if relative
+	if !filepath.IsAbs(path) {
+		absPath, err := filepath.Abs(path)
+		if err != nil {
+			return "", fmt.Errorf("failed to get absolute path: %w", err)
+		}
+		path = absPath
+	}
+
+	return path, nil
+}
+
 // TildePath replaces the home directory portion of a path with ~.
 // If the path doesn't start with the home directory, it returns the original path.
 func TildePath(path string) string {

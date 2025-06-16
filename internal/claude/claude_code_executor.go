@@ -15,46 +15,44 @@ import (
 	"github.com/d-kuro/gwq/internal/git"
 	"github.com/d-kuro/gwq/internal/worktree"
 	"github.com/d-kuro/gwq/pkg/models"
+	"github.com/d-kuro/gwq/pkg/system"
 )
 
 // ClaudeCodeExecutor handles the actual execution of Claude Code commands
 type ClaudeCodeExecutor struct {
 	config *models.ClaudeConfig
+	system system.SystemInterface
 }
 
 // NewClaudeCodeExecutor creates a new Claude Code executor
 func NewClaudeCodeExecutor(config *models.ClaudeConfig) *ClaudeCodeExecutor {
 	return &ClaudeCodeExecutor{
 		config: config,
+		system: system.NewStandardSystem(),
+	}
+}
+
+// NewClaudeCodeExecutorWithSystem creates a new Claude Code executor with custom system interface
+func NewClaudeCodeExecutorWithSystem(config *models.ClaudeConfig, sys system.SystemInterface) *ClaudeCodeExecutor {
+	return &ClaudeCodeExecutor{
+		config: config,
+		system: sys,
 	}
 }
 
 // Execute runs Claude Code and captures the output
 func (cce *ClaudeCodeExecutor) Execute(ctx context.Context, execution *UnifiedExecution, logFile string) (*ExecutionResult, error) {
-	// Build the Claude command based on execution type
-	claudeCmd := cce.buildClaudeCommand(execution)
-
-	// Create named pipe for capturing output
-	pipePath := fmt.Sprintf("/tmp/gwq-claude-%s.pipe", execution.ExecutionID)
-	if err := syscallMkfifo(pipePath, 0600); err != nil {
+	// Create named pipe for output capture
+	pipePath, cleanup, err := cce.createNamedPipe(execution.ExecutionID)
+	if err != nil {
 		return nil, fmt.Errorf("failed to create named pipe: %w", err)
 	}
-	defer func() {
-		if err := os.Remove(pipePath); err != nil {
-			fmt.Printf("Warning: failed to remove pipe: %v\n", err)
-		}
-	}()
+	defer cleanup()
 
-	// Start log capture goroutine
-	logCaptureDone := make(chan error, 1)
-	go func() {
-		logCaptureDone <- cce.captureLogOutput(pipePath, logFile, execution)
-	}()
+	// Start log capture in background
+	logCaptureDone := cce.startLogCapture(pipePath, logFile, execution)
 
-	// Build full command with output redirection
-	fullCmd := fmt.Sprintf("%s | tee %s", claudeCmd, pipePath)
-
-	// Ensure worktree exists for task executions
+	// Setup and validate execution environment
 	if err := cce.ensureWorktreeExists(execution); err != nil {
 		return &ExecutionResult{
 			Success:  false,
@@ -63,67 +61,23 @@ func (cce *ClaudeCodeExecutor) Execute(ctx context.Context, execution *UnifiedEx
 		}, err
 	}
 
-	// Create and start the command
-	cmd := exec.CommandContext(ctx, "bash", "-c", fullCmd)
-	cmd.Dir = execution.WorkingDir
-
-	// Set environment variables
-	cmd.Env = append(os.Environ(),
-		fmt.Sprintf("CLAUDE_EXECUTION_ID=%s", execution.ExecutionID),
-		fmt.Sprintf("CLAUDE_SESSION_ID=%s", execution.SessionID),
-	)
-
-	// Start the command
-	if err := cmd.Start(); err != nil {
+	// Execute the Claude command
+	cmd, err := cce.setupCommandExecution(ctx, execution, pipePath)
+	if err != nil {
 		return &ExecutionResult{
 			Success:  false,
 			ExitCode: 1,
-			Error:    fmt.Sprintf("failed to start Claude command: %v", err),
+			Error:    fmt.Sprintf("failed to setup command: %v", err),
 		}, err
 	}
 
-	// Wait for command completion
-	err := cmd.Wait()
-	exitCode := 0
-	if err != nil {
-		if exitError, ok := err.(*exec.ExitError); ok {
-			exitCode = exitError.ExitCode()
-		} else {
-			exitCode = 1
-		}
-	}
+	exitCode, cmdErr := cce.executeCommand(cmd)
 
-	// Wait for tmux session to terminate (for task executions)
-	if execution.ExecutionType == ExecutionTypeTask && execution.TmuxSession != "" {
-		cce.waitForTmuxSessionTermination(ctx, execution.TmuxSession)
-	}
+	// Handle post-execution cleanup
+	cce.handlePostExecution(ctx, execution)
 
-	// Wait for log capture to complete
-	logErr := <-logCaptureDone
-
-	// Detect changed files
-	changedFiles := cce.detectChangedFiles(execution)
-
-	// Create result
-	result := &ExecutionResult{
-		Success:      exitCode == 0 && err == nil,
-		ExitCode:     exitCode,
-		FilesChanged: changedFiles,
-	}
-
-	if err != nil {
-		result.Error = err.Error()
-	}
-
-	if logErr != nil {
-		if result.Error != "" {
-			result.Error += fmt.Sprintf("; log capture error: %v", logErr)
-		} else {
-			result.Error = fmt.Sprintf("log capture error: %v", logErr)
-		}
-	}
-
-	return result, nil
+	// Collect and return results
+	return cce.collectExecutionResult(exitCode, cmdErr, logCaptureDone, execution)
 }
 
 // buildClaudeCommand builds the appropriate Claude command
@@ -263,6 +217,111 @@ func (cce *ClaudeCodeExecutor) detectChangedFiles(execution *UnifiedExecution) [
 	}
 
 	return files
+}
+
+// createNamedPipe creates a named pipe for output capture
+func (cce *ClaudeCodeExecutor) createNamedPipe(executionID string) (string, func(), error) {
+	pipePath := fmt.Sprintf("/tmp/gwq-claude-%s.pipe", executionID)
+	if err := cce.system.CreateNamedPipe(pipePath, 0600); err != nil {
+		return "", nil, err
+	}
+
+	cleanup := func() {
+		if err := cce.system.RemoveFile(pipePath); err != nil {
+			fmt.Printf("Warning: failed to remove pipe: %v\n", err)
+		}
+	}
+
+	return pipePath, cleanup, nil
+}
+
+// startLogCapture starts log capture in a background goroutine
+func (cce *ClaudeCodeExecutor) startLogCapture(pipePath, logFile string, execution *UnifiedExecution) <-chan error {
+	logCaptureDone := make(chan error, 1)
+	go func() {
+		logCaptureDone <- cce.captureLogOutput(pipePath, logFile, execution)
+	}()
+	return logCaptureDone
+}
+
+// setupCommandExecution creates and configures the command for execution
+func (cce *ClaudeCodeExecutor) setupCommandExecution(ctx context.Context, execution *UnifiedExecution, pipePath string) (*exec.Cmd, error) {
+	// Build the Claude command
+	claudeCmd := cce.buildClaudeCommand(execution)
+	fullCmd := fmt.Sprintf("%s | tee %s", claudeCmd, pipePath)
+
+	// Create command with context
+	cmd := exec.CommandContext(ctx, "bash", "-c", fullCmd)
+	cmd.Dir = execution.WorkingDir
+
+	// Set environment variables
+	cmd.Env = append(os.Environ(),
+		fmt.Sprintf("CLAUDE_EXECUTION_ID=%s", execution.ExecutionID),
+		fmt.Sprintf("CLAUDE_SESSION_ID=%s", execution.SessionID),
+	)
+
+	return cmd, nil
+}
+
+// executeCommand starts the command and waits for completion
+func (cce *ClaudeCodeExecutor) executeCommand(cmd *exec.Cmd) (int, error) {
+	// Start the command
+	if err := cmd.Start(); err != nil {
+		return 1, fmt.Errorf("failed to start Claude command: %w", err)
+	}
+
+	// Wait for command completion
+	err := cmd.Wait()
+	exitCode := 0
+	if err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			exitCode = exitError.ExitCode()
+		} else {
+			exitCode = 1
+		}
+	}
+
+	return exitCode, err
+}
+
+// handlePostExecution handles cleanup after command execution
+func (cce *ClaudeCodeExecutor) handlePostExecution(ctx context.Context, execution *UnifiedExecution) {
+	// Wait for tmux session to terminate (for task executions)
+	if execution.ExecutionType == ExecutionTypeTask && execution.TmuxSession != "" {
+		cce.waitForTmuxSessionTermination(ctx, execution.TmuxSession)
+	}
+}
+
+// collectExecutionResult collects execution results and builds the final result
+func (cce *ClaudeCodeExecutor) collectExecutionResult(exitCode int, cmdErr error, logCaptureDone <-chan error, execution *UnifiedExecution) (*ExecutionResult, error) {
+	// Wait for log capture to complete
+	logErr := <-logCaptureDone
+
+	// Detect changed files
+	changedFiles := cce.detectChangedFiles(execution)
+
+	// Create result
+	result := &ExecutionResult{
+		Success:      exitCode == 0 && cmdErr == nil,
+		ExitCode:     exitCode,
+		FilesChanged: changedFiles,
+	}
+
+	// Handle command execution errors
+	if cmdErr != nil {
+		result.Error = cmdErr.Error()
+	}
+
+	// Handle log capture errors
+	if logErr != nil {
+		if result.Error != "" {
+			result.Error += fmt.Sprintf("; log capture error: %v", logErr)
+		} else {
+			result.Error = fmt.Sprintf("log capture error: %v", logErr)
+		}
+	}
+
+	return result, nil
 }
 
 // WatchOutput provides real-time output watching for an execution

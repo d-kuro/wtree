@@ -9,6 +9,7 @@ import (
 
 	"github.com/d-kuro/gwq/internal/url"
 	"github.com/d-kuro/gwq/pkg/models"
+	"github.com/d-kuro/gwq/pkg/utils"
 )
 
 // GitInterface defines the git operations used by Manager.
@@ -49,13 +50,12 @@ func (m *Manager) Add(branch string, customPath string, createBranch bool) error
 		path = generatedPath
 	}
 
-	if !filepath.IsAbs(path) {
-		absPath, err := filepath.Abs(path)
-		if err != nil {
-			return fmt.Errorf("failed to get absolute path: %w", err)
-		}
-		path = absPath
+	// Expand path (handles ~, env vars, and relative paths)
+	expandedPath, err := utils.ExpandPath(path)
+	if err != nil {
+		return fmt.Errorf("failed to expand path: %w", err)
 	}
+	path = expandedPath
 
 	if m.config.Worktree.AutoMkdir {
 		dir := filepath.Dir(path)
@@ -82,13 +82,12 @@ func (m *Manager) AddFromBase(branch string, baseBranch string, customPath strin
 		path = generatedPath
 	}
 
-	if !filepath.IsAbs(path) {
-		absPath, err := filepath.Abs(path)
-		if err != nil {
-			return fmt.Errorf("failed to get absolute path: %w", err)
-		}
-		path = absPath
+	// Expand path (handles ~, env vars, and relative paths)
+	expandedPath, err := utils.ExpandPath(path)
+	if err != nil {
+		return fmt.Errorf("failed to expand path: %w", err)
 	}
+	path = expandedPath
 
 	if m.config.Worktree.AutoMkdir {
 		dir := filepath.Dir(path)
