@@ -9,6 +9,32 @@ import (
 	"strings"
 )
 
+// TmuxInterface defines the contract for tmux operations
+type TmuxInterface interface {
+	NewSession(name, workDir string) error
+	NewSessionContext(ctx context.Context, name, workDir string) error
+	NewSessionWithCommandContext(ctx context.Context, name, workDir, command string) error
+	SetOption(sessionName, option string, value interface{}) error
+	SetOptionContext(ctx context.Context, sessionName, option string, value interface{}) error
+	ListSessions() ([]string, error)
+	ListSessionsDetailed() ([]*SessionInfo, error)
+	KillSession(sessionName string) error
+	AttachSession(sessionName string) error
+	HasSession(sessionName string) bool
+}
+
+// SessionManagerInterface defines the contract for session management
+type SessionManagerInterface interface {
+	CreateSession(ctx context.Context, opts SessionOptions) (*Session, error)
+	ListSessions() ([]*Session, error)
+	GetSession(id string) (*Session, error)
+	KillSession(id string) error
+	KillSessionDirect(session *Session) error
+	AttachSession(id string) error
+	AttachSessionDirect(session *Session) error
+	HasSession(sessionName string) bool
+}
+
 type TmuxCommand struct {
 	command string
 }

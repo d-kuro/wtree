@@ -7,23 +7,32 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/d-kuro/gwq/pkg/filesystem"
 )
 
 // Storage provides persistent storage for Claude tasks
 type Storage struct {
 	queueDir string
 	mu       sync.RWMutex
+	fs       filesystem.FileSystemInterface
 }
 
 // NewStorage creates a new storage instance
 func NewStorage(queueDir string) (*Storage, error) {
+	return NewStorageWithFS(queueDir, filesystem.NewStandardFileSystem())
+}
+
+// NewStorageWithFS creates a new storage instance with custom filesystem
+func NewStorageWithFS(queueDir string, fs filesystem.FileSystemInterface) (*Storage, error) {
 	// Ensure queue directory exists
-	if err := os.MkdirAll(queueDir, 0755); err != nil {
+	if err := fs.MkdirAll(queueDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create queue directory: %w", err)
 	}
 
 	return &Storage{
 		queueDir: queueDir,
+		fs:       fs,
 	}, nil
 }
 
@@ -42,7 +51,7 @@ func (s *Storage) SaveTask(task *Task) error {
 	}
 
 	filename := s.taskFilename(task.ID)
-	if err := os.WriteFile(filename, data, 0644); err != nil {
+	if err := s.fs.WriteFile(filename, data, 0644); err != nil {
 		return fmt.Errorf("failed to write task file: %w", err)
 	}
 
@@ -55,7 +64,7 @@ func (s *Storage) LoadTask(taskID string) (*Task, error) {
 	defer s.mu.RUnlock()
 
 	filename := s.taskFilename(taskID)
-	data, err := os.ReadFile(filename)
+	data, err := s.fs.ReadFile(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, fmt.Errorf("task not found: %s", taskID)
@@ -77,7 +86,7 @@ func (s *Storage) DeleteTask(taskID string) error {
 	defer s.mu.Unlock()
 
 	filename := s.taskFilename(taskID)
-	if err := os.Remove(filename); err != nil {
+	if err := s.fs.Remove(filename); err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("task not found: %s", taskID)
 		}
@@ -92,7 +101,7 @@ func (s *Storage) ListTasks() ([]*Task, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	entries, err := os.ReadDir(s.queueDir)
+	entries, err := s.fs.ReadDir(s.queueDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read queue directory: %w", err)
 	}
@@ -104,7 +113,7 @@ func (s *Storage) ListTasks() ([]*Task, error) {
 		}
 
 		filename := filepath.Join(s.queueDir, entry.Name())
-		data, err := os.ReadFile(filename)
+		data, err := s.fs.ReadFile(filename)
 		if err != nil {
 			// Skip files that can't be read
 			continue
@@ -241,7 +250,7 @@ func (s *Storage) Cleanup(olderThan time.Duration) (int, error) {
 
 		// Check if task is old enough
 		if task.CompletedAt != nil && task.CompletedAt.Before(cutoff) {
-			if err := os.Remove(s.taskFilename(task.ID)); err == nil {
+			if err := s.fs.Remove(s.taskFilename(task.ID)); err == nil {
 				removed++
 			}
 		}

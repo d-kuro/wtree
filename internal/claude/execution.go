@@ -736,7 +736,6 @@ func FindLogFileByExecutionID(logDir string, startTime time.Time, executionID st
 		return oldPath
 	}
 
-
 	// Return design-compliant path as default for new file creation
 	// This path will be used for new files but won't cause errors for missing files
 	return filepath.Join(execLogDir, fmt.Sprintf("%s-%s.jsonl", timestamp, executionID))
