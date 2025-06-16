@@ -12,7 +12,7 @@ import (
 
 type SessionManager struct {
 	config  *SessionConfig
-	tmuxCmd *TmuxCommand
+	tmuxCmd TmuxInterface
 }
 
 func NewSessionManager(config *SessionConfig, dataDir string) *SessionManager {

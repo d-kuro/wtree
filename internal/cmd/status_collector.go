@@ -316,12 +316,36 @@ func (c *StatusCollector) getLastActivity(path string) (time.Time, error) {
 	// than walking the entire directory tree
 	g := git.New(path)
 
+	latestTime, err := c.getLastActivityFromTrackedFiles(g, path)
+	if err != nil {
+		// Fallback to directory walk if git command fails
+		return c.getLastActivityFallback(path)
+	}
+
+	// Also check untracked files that are not ignored
+	untrackedTime := c.getLastActivityFromUntrackedFiles(g, path)
+	if untrackedTime.After(latestTime) {
+		latestTime = untrackedTime
+	}
+
+	if latestTime.IsZero() {
+		// If no files found, use the directory's own modification time
+		info, err := os.Stat(path)
+		if err == nil {
+			latestTime = info.ModTime()
+		}
+	}
+
+	return latestTime, nil
+}
+
+// getLastActivityFromTrackedFiles gets the latest modification time from tracked files
+func (c *StatusCollector) getLastActivityFromTrackedFiles(g *git.Git, path string) (time.Time, error) {
 	// Get list of tracked files
 	// Using -z for null-terminated output to handle filenames with spaces
 	output, err := g.Run("ls-files", "-z")
 	if err != nil {
-		// Fallback to directory walk if git command fails
-		return c.getLastActivityFallback(path)
+		return time.Time{}, err
 	}
 
 	var latestTime time.Time
@@ -343,36 +367,36 @@ func (c *StatusCollector) getLastActivity(path string) (time.Time, error) {
 		}
 	}
 
-	// Also check untracked files that are not ignored
+	return latestTime, nil
+}
+
+// getLastActivityFromUntrackedFiles gets the latest modification time from untracked files
+func (c *StatusCollector) getLastActivityFromUntrackedFiles(g *git.Git, path string) time.Time {
+	var latestTime time.Time
+
 	untrackedOutput, err := g.Run("ls-files", "-z", "--others", "--exclude-standard")
-	if err == nil {
-		untrackedFiles := strings.Split(strings.TrimRight(untrackedOutput, "\x00"), "\x00")
-		for _, file := range untrackedFiles {
-			if file == "" {
-				continue
-			}
-
-			fullPath := filepath.Join(path, file)
-			info, err := os.Stat(fullPath)
-			if err != nil || info.IsDir() {
-				continue
-			}
-
-			if info.ModTime().After(latestTime) {
-				latestTime = info.ModTime()
-			}
-		}
+	if err != nil {
+		return latestTime
 	}
 
-	if latestTime.IsZero() {
-		// If no files found, use the directory's own modification time
-		info, err := os.Stat(path)
-		if err == nil {
+	untrackedFiles := strings.Split(strings.TrimRight(untrackedOutput, "\x00"), "\x00")
+	for _, file := range untrackedFiles {
+		if file == "" {
+			continue
+		}
+
+		fullPath := filepath.Join(path, file)
+		info, err := os.Stat(fullPath)
+		if err != nil || info.IsDir() {
+			continue
+		}
+
+		if info.ModTime().After(latestTime) {
 			latestTime = info.ModTime()
 		}
 	}
 
-	return latestTime, nil
+	return latestTime
 }
 
 // getLastActivityFallback is the fallback method when git commands fail

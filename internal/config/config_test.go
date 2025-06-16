@@ -201,7 +201,7 @@ func TestConfigStructureIntegrity(t *testing.T) {
 		},
 		Finder: models.FinderConfig{
 			Preview: true,
-			},
+		},
 		UI: models.UIConfig{
 			Icons: false,
 		},
